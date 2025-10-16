@@ -3,9 +3,13 @@ import {
   listSessionsByClass,
   createSession,
 } from "../controllers/sessionsController.js";
+import {
+  authMiddleware,
+  requireAdmin,
+} from "../middlewares/authMiddleware.js";
 const router = Router();
 
 router.get("/class/:classId", listSessionsByClass); // GET /api/sessions/class/1
-router.post("/", createSession); // POST /api/sessions
+router.post("/", authMiddleware, requireAdmin, createSession);
 
 export default router;

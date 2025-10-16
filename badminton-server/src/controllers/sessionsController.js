@@ -7,7 +7,12 @@ export async function listSessionsByClass(req, res) {
       return res
         .status(400)
         .json({ ok: false, message: "classId is required" });
-    const data = await sessionsModel.getSessionsByClass(classId);
+    const sessions = await sessionsModel.getSessionsByClass(classId);
+    const data = sessions.map((session) => {
+      const capacity = session.capacity ?? session.class_capacity ?? 0;
+      const available_slots = Math.max(capacity - session.active_enrolled, 0);
+      return { ...session, capacity, available_slots };
+    });
     res.json({ ok: true, data });
   } catch (err) {
     console.error("listSessionsByClass error:", err);
