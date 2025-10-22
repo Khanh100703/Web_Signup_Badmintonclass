@@ -5,7 +5,7 @@ import {
   getMe,
   updateMe,
 } from "../controllers/usersController.js";
-import { auth } from "../middlewares/auth.js";
+import { requireAuth } from "../middlewares/auth.js";
 import { body } from "express-validator";
 
 const router = Router();
@@ -25,10 +25,10 @@ router.post(
   loginUser
 );
 
-router.get("/me", auth, getMe);
+router.get("/me", requireAuth, getMe);
 router.put(
   "/me",
-  auth,
+  requireAuth,
   body("name").optional().isString(),
   body("phone").optional().isString(),
   updateMe

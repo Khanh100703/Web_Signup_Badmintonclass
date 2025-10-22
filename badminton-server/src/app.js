@@ -6,6 +6,13 @@ import usersRoutes from "./routes/usersRoutes.js";
 import enrollmentsRoutes from "./routes/enrollmentsRoutes.js";
 import scheduleRoutes from "./routes/scheduleRoutes.js";
 import coachesRoutes from "./routes/coachesRoutes.js";
+import adminUsersRoutes from "./routes/adminUsersRoutes.js";
+import authExtraRoutes from "./routes/authExtraRoutes.js";
+import locationsRoutes from "./routes/locationsRoutes.js";
+import sessionToolsRoutes from "./routes/sessionToolsRoutes.js";
+import attendanceRoutes from "./routes/attendanceRoutes.js";
+import notificationsRoutes from "./routes/notificationsRoutes.js";
+import reportsRoutes from "./routes/reportsRoutes.js";
 
 const app = express();
 app.use(cors());
@@ -23,5 +30,12 @@ app.use("/api/users", usersRoutes);
 app.use("/api/enrollments", enrollmentsRoutes);
 app.use("/api", scheduleRoutes);
 app.use("/api/coaches", coachesRoutes);
+app.use("/api/admin/users", adminUsersRoutes);
+app.use("/api/auth", authExtraRoutes);
+app.use("/api/locations", locationsRoutes);
+app.use("/api", sessionToolsRoutes);
+app.use("/api", attendanceRoutes);
+app.use("/api", notificationsRoutes);
+app.use("/api/reports", reportsRoutes);
 
 export default app;

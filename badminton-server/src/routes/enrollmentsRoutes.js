@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { auth } from "../middlewares/auth.js";
+import { requireAuth } from "../middlewares/auth.js";
 import {
   enroll,
   cancelEnrollment,
@@ -8,7 +8,7 @@ import { body } from "express-validator";
 
 const router = Router();
 
-router.post("/", auth, body("session_id").notEmpty(), enroll);
-router.delete("/:id", auth, cancelEnrollment); // id_enrollments
+router.post("/", requireAuth, body("session_id").notEmpty(), enroll);
+router.delete("/:id", requireAuth, cancelEnrollment); // id_enrollments
 
 export default router;

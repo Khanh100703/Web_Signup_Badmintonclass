@@ -6,7 +6,7 @@ import {
   updateClass,
   deleteClass,
 } from "../controllers/classesController.js";
-import { auth, requireRole } from "../middlewares/auth.js";
+import { requireAuth, requireRole } from "../middlewares/auth.js";
 import { body } from "express-validator";
 
 const router = Router();
@@ -17,14 +17,14 @@ router.get("/:id", getClassDetail);
 // Admin CRUD
 router.post(
   "/",
-  auth,
+  requireAuth,
   requireRole(["ADMIN"]),
   body("title").notEmpty(),
   body("coach_id").notEmpty(),
   createClass
 );
 
-router.put("/:id", auth, requireRole(["ADMIN"]), updateClass);
-router.delete("/:id", auth, requireRole(["ADMIN"]), deleteClass);
+router.put("/:id", requireAuth, requireRole(["ADMIN"]), updateClass);
+router.delete("/:id", requireAuth, requireRole(["ADMIN"]), deleteClass);
 
 export default router;

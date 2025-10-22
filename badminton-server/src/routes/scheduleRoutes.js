@@ -1,7 +1,7 @@
 import { Router } from "express";
-import { auth } from "../middlewares/auth.js";
+import { requireAuth } from "../middlewares/auth.js";
 import { mySchedule } from "../controllers/scheduleController.js";
 
 const router = Router();
-router.get("/me/schedule", auth, mySchedule);
+router.get("/me/schedule", requireAuth, mySchedule);
 export default router;

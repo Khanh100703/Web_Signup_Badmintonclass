@@ -1,6 +1,9 @@
 import { pool } from "../db.js";
 import { validationResult } from "express-validator";
 
+// Mặc định không cho đăng ký hoặc huỷ khi còn dưới 2 giờ trước giờ bắt đầu
+const MIN_HOURS_BEFORE = 2;
+
 export async function enroll(req, res) {
   const errors = validationResult(req);
   if (!errors.isEmpty())
@@ -10,7 +13,6 @@ export async function enroll(req, res) {
   const { session_id } = req.body;
 
   try {
-    // 1) session tồn tại?
     const [[s]] = await pool.query(
       `SELECT s.id, s.start_time, s.end_time, s.capacity AS session_capacity,
               c.capacity AS class_capacity
@@ -22,41 +24,54 @@ export async function enroll(req, res) {
     if (!s)
       return res.status(404).json({ ok: false, message: "Session not found" });
 
-    // 2) chưa bắt đầu?
-    if (new Date(s.start_time) <= new Date()) {
+    const now = new Date();
+    const startAt = new Date(s.start_time);
+    const hoursUntil = (startAt - now) / (1000 * 60 * 60);
+    if (hoursUntil <= 0) {
       return res
         .status(400)
         .json({ ok: false, message: "Buổi học đã bắt đầu/qua rồi" });
     }
+    if (hoursUntil < MIN_HOURS_BEFORE) {
+      return res.status(400).json({
+        ok: false,
+        message: `Không thể đăng ký khi còn < ${MIN_HOURS_BEFORE} giờ trước khi bắt đầu`,
+      });
+    }
 
-    // 3) đã enroll chưa?
-    const [[dup]] = await pool.query(
-      `SELECT id FROM enrollments WHERE session_id=? AND user_id=? AND status='ENROLLED'`,
-      [session_id, userId]
-    );
-    if (dup)
-      return res
-        .status(409)
-        .json({ ok: false, message: "Bạn đã đăng ký buổi này" });
-
-    // 4) capacity check
     const [[countRow]] = await pool.query(
       `SELECT COUNT(*) AS cnt FROM enrollments WHERE session_id=? AND status='ENROLLED'`,
       [session_id]
     );
     const enrolledCount = countRow.cnt;
     const capacity = s.session_capacity ?? s.class_capacity ?? 0;
+
     if (capacity > 0 && enrolledCount >= capacity) {
-      return res.status(409).json({ ok: false, message: "Buổi học đã đủ chỗ" });
+      await pool.query(
+        `INSERT INTO enrollments (session_id, user_id, status)
+         VALUES (?,?, 'WAITLIST')
+         ON DUPLICATE KEY UPDATE status='WAITLIST'`,
+        [session_id, userId]
+      );
+      return res.json({
+        ok: true,
+        waitlisted: true,
+        message: "Lớp đã đầy, bạn được thêm vào danh sách chờ.",
+      });
     }
 
-    // 5) insert
-    const [ins] = await pool.query(
-      `INSERT INTO enrollments (session_id, user_id, status) VALUES (?,?, 'ENROLLED')`,
+    await pool.query(
+      `INSERT INTO enrollments (session_id, user_id, status)
+       VALUES (?,?, 'ENROLLED')
+       ON DUPLICATE KEY UPDATE status='ENROLLED'`,
       [session_id, userId]
     );
-    return res.status(201).json({ ok: true, id: ins.insertId });
+
+    return res
+      .status(201)
+      .json({ ok: true, enrolled: true, message: "Đăng ký thành công!" });
   } catch (e) {
+    console.error("enroll error:", e);
     return res.status(500).json({ ok: false, message: "Server error" });
   }
 }
@@ -66,9 +81,8 @@ export async function cancelEnrollment(req, res) {
   const { id } = req.params;
 
   try {
-    // lấy enrollment + session
     const [[row]] = await pool.query(
-      `SELECT e.id, e.user_id, s.start_time
+      `SELECT e.id, e.user_id, e.session_id, s.start_time
        FROM enrollments e
        JOIN sessions s ON s.id = e.session_id
        WHERE e.id=?`,
@@ -78,18 +92,60 @@ export async function cancelEnrollment(req, res) {
       return res
         .status(404)
         .json({ ok: false, message: "Enrollment not found" });
-    if (row.user_id !== userId)
+
+    if (row.user_id !== userId) {
       return res.status(403).json({ ok: false, message: "Không có quyền huỷ" });
-    if (new Date(row.start_time) <= new Date()) {
+    }
+
+    const now2 = new Date();
+    const startAt2 = new Date(row.start_time);
+    const hoursUntil2 = (startAt2 - now2) / (1000 * 60 * 60);
+    if (hoursUntil2 <= 0) {
       return res
         .status(400)
         .json({ ok: false, message: "Buổi học đã bắt đầu/qua rồi" });
     }
+    if (hoursUntil2 < MIN_HOURS_BEFORE) {
+      return res.status(400).json({
+        ok: false,
+        message: `Không thể huỷ khi còn < ${MIN_HOURS_BEFORE} giờ trước khi bắt đầu`,
+      });
+    }
 
-    // Xoá hẳn để user có thể đăng ký lại (giữ UNIQUE)
-    await pool.query("DELETE FROM enrollments WHERE id=?", [id]);
+    await pool.query('UPDATE enrollments SET status="CANCELLED" WHERE id=?', [
+      id,
+    ]);
+
+    const [[cap]] = await pool.query(
+      "SELECT capacity FROM sessions WHERE id=?",
+      [row.session_id]
+    );
+    if (cap) {
+      const [[cnt]] = await pool.query(
+        `SELECT COUNT(*) AS n FROM enrollments WHERE session_id=? AND status='ENROLLED'`,
+        [row.session_id]
+      );
+
+      if (cnt.n < cap.capacity) {
+        const [[next]] = await pool.query(
+          `SELECT id, user_id FROM enrollments
+           WHERE session_id=? AND status='WAITLIST'
+           ORDER BY created_at ASC LIMIT 1`,
+          [row.session_id]
+        );
+
+        if (next) {
+          await pool.query(
+            'UPDATE enrollments SET status="ENROLLED" WHERE id=?',
+            [next.id]
+          );
+        }
+      }
+    }
+
     return res.json({ ok: true, message: "Đã huỷ đăng ký" });
-  } catch {
+  } catch (e) {
+    console.error("cancelEnrollment error:", e);
     return res.status(500).json({ ok: false, message: "Server error" });
   }
 }
