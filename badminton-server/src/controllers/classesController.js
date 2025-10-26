@@ -1,3 +1,4 @@
+import { pool } from "../db.js";
 import * as classesModel from "../models/classesModel.js";
 
 /**
@@ -21,17 +22,70 @@ export async function listClasses(req, res) {
 
 /**
  * GET /api/classes/:id
+ * Trả kèm thông tin coach (và location nếu có)
  */
 export async function getClassDetail(req, res) {
+  const { id } = req.params;
   try {
-    const id = Number(req.params.id);
-    if (!id)
-      return res.status(400).json({ ok: false, message: "id is required" });
+    const [rows] = await pool.query(
+      `SELECT 
+          c.*,
+          co.id      AS coach_id,
+          co.name    AS coach_name,
+          co.email   AS coach_email,
+          co.phone   AS coach_phone,
+          l.id       AS location_id,
+          l.name     AS location_name,
+          l.address  AS location_address,
+          lv.id      AS level_id,
+          lv.name    AS level_name,
+          cat.id     AS category_id,
+          cat.name   AS category_name
+       FROM classes c
+       LEFT JOIN coaches         co  ON co.id  = c.coach_id
+       LEFT JOIN locations       l   ON l.id   = c.location_id
+       LEFT JOIN class_levels    lv  ON lv.id  = c.level_id
+       LEFT JOIN class_categories cat ON cat.id = c.category_id
+       WHERE c.id=?`,
+      [id]
+    );
 
-    const data = await classesModel.getClassDetail(id);
-    if (!data || !data.cls) {
-      return res.status(404).json({ ok: false, message: "Class not found" });
+    if (!rows.length) {
+      return res.status(404).json({ ok: false, message: "Not found" });
     }
+
+    const c = rows[0];
+    const data = {
+      id: c.id,
+      title: c.title,
+      description: c.description,
+      capacity: c.capacity ?? null,
+      price: c.price ?? c.tuition ?? null, // 👈 thêm price/tuition
+      coach_id: c.coach_id || null, // 👈 thêm id để frontend fallback call coach
+      location_id: c.location_id || null, // 👈 thêm id để frontend fallback call location
+      level_id: c.level_id || null,
+      category_id: c.category_id || null,
+      coach: c.coach_id
+        ? {
+            id: c.coach_id,
+            name: c.coach_name,
+            email: c.coach_email,
+            phone: c.coach_phone,
+          }
+        : null,
+      location: c.location_id
+        ? {
+            id: c.location_id,
+            name: c.location_name,
+            address: c.location_address,
+          }
+        : null,
+      level: c.level_id ? { id: c.level_id, name: c.level_name } : null,
+      category: c.category_id
+        ? { id: c.category_id, name: c.category_name }
+        : null,
+    };
+
     return res.json({ ok: true, data });
   } catch (e) {
     console.error("getClassDetail error:", e);
@@ -61,8 +115,9 @@ export async function createClass(req, res) {
 export async function updateClass(req, res) {
   try {
     const id = Number(req.params.id);
-    if (!id)
+    if (!id) {
       return res.status(400).json({ ok: false, message: "id is required" });
+    }
 
     const payload = req.body || {};
     const allowFields = [
@@ -75,6 +130,9 @@ export async function updateClass(req, res) {
       "category_id",
       "start_date",
       "end_date",
+      "price",
+      "tuition",
+      "level",
     ];
     const hasAny = allowFields.some((k) =>
       Object.prototype.hasOwnProperty.call(payload, k)
@@ -116,31 +174,27 @@ export async function deleteClass(req, res) {
     // 2) Nếu còn sessions → 409 (không cho xoá)
     const sessionsCnt = await classesModel.countSessionsOfClass(id);
     if (sessionsCnt > 0) {
-      // (tuỳ ý) nếu muốn đếm enrollments để show thêm chi tiết:
-      // const enrollCnt = await classesModel.countEnrollmentsOfClass(id);
       return res.status(409).json({
         ok: false,
         message: "Cannot delete class: it still has sessions",
         details: { sessions: sessionsCnt },
-        // , enrollments: enrollCnt
       });
     }
 
     // 3) Thực hiện xoá
     const affected = await classesModel.deleteClass(id);
     if (!affected) {
-      // Về lý thuyết không vào đây nữa vì đã check exists ở trên, nhưng để an toàn:
       return res.status(404).json({ ok: false, message: "Class not found" });
     }
 
     return res.status(204).end();
   } catch (e) {
-    // 4) Ánh xạ lỗi FK về 409 (tuỳ driver/DB)
+    // 4) Ánh xạ lỗi FK về 409
     const fkCodes = new Set([
       1451, // MySQL ER_ROW_IS_REFERENCED_2
       "ER_ROW_IS_REFERENCED_2",
       "ER_ROW_IS_REFERENCED",
-      "SQLITE_CONSTRAINT_FOREIGNKEY", // nếu local test SQLite
+      "SQLITE_CONSTRAINT_FOREIGNKEY",
     ]);
     if (fkCodes.has(e?.errno) || fkCodes.has(e?.code)) {
       return res.status(409).json({

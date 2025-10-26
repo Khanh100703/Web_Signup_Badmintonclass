@@ -13,6 +13,8 @@ import sessionToolsRoutes from "./routes/sessionToolsRoutes.js";
 import attendanceRoutes from "./routes/attendanceRoutes.js";
 import notificationsRoutes from "./routes/notificationsRoutes.js";
 import reportsRoutes from "./routes/reportsRoutes.js";
+import levelsRoutes from "./routes/levelsRoutes.js";
+import categoriesRoutes from "./routes/categoriesRoutes.js";
 
 const app = express();
 app.use(cors());
@@ -37,5 +39,13 @@ app.use("/api", sessionToolsRoutes);
 app.use("/api", attendanceRoutes);
 app.use("/api", notificationsRoutes);
 app.use("/api/reports", reportsRoutes);
+app.use("/api/levels", levelsRoutes);
+app.use("/api/categories", categoriesRoutes);
+app.use(
+  cors({
+    origin: "http://localhost:3000",
+    credentials: true, // nếu bạn dùng cookie/session, để true; còn dùng Bearer thì có/không đều được
+  })
+);
 
 export default app;

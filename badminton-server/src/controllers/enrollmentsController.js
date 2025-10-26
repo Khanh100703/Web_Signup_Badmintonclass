@@ -13,6 +13,24 @@ export async function enroll(req, res) {
   const { session_id } = req.body;
 
   try {
+    // 0) ĐÃ ĐĂNG KÝ/WAITLIST CHƯA?
+    const [[existed]] = await pool.query(
+      `SELECT id, status FROM enrollments 
+       WHERE user_id=? AND session_id=? AND status IN ('ENROLLED','WAITLIST')`,
+      [userId, session_id]
+    );
+    if (existed) {
+      return res.status(200).json({
+        ok: true,
+        already: true,
+        message:
+          existed.status === "ENROLLED"
+            ? "Bạn đã đăng ký buổi này"
+            : "Bạn đang trong danh sách chờ",
+      });
+    }
+
+    // 1) Lấy thông tin session + class
     const [[s]] = await pool.query(
       `SELECT s.id, s.start_time, s.end_time, s.capacity AS session_capacity,
               c.capacity AS class_capacity
@@ -24,6 +42,7 @@ export async function enroll(req, res) {
     if (!s)
       return res.status(404).json({ ok: false, message: "Session not found" });
 
+    // 2) Kiểm tra thời gian (rule 2h)
     const now = new Date();
     const startAt = new Date(s.start_time);
     const hoursUntil = (startAt - now) / (1000 * 60 * 60);
@@ -39,6 +58,7 @@ export async function enroll(req, res) {
       });
     }
 
+    // 3) Tính capacity
     const [[countRow]] = await pool.query(
       `SELECT COUNT(*) AS cnt FROM enrollments WHERE session_id=? AND status='ENROLLED'`,
       [session_id]
@@ -116,6 +136,7 @@ export async function cancelEnrollment(req, res) {
       id,
     ]);
 
+    // Promote từ WAITLIST nếu còn chỗ
     const [[cap]] = await pool.query(
       "SELECT capacity FROM sessions WHERE id=?",
       [row.session_id]
@@ -146,6 +167,28 @@ export async function cancelEnrollment(req, res) {
     return res.json({ ok: true, message: "Đã huỷ đăng ký" });
   } catch (e) {
     console.error("cancelEnrollment error:", e);
+    return res.status(500).json({ ok: false, message: "Server error" });
+  }
+}
+
+// NEW: danh sách session_id user đã đăng ký (ENROLLED/WAITLIST) trong 1 class
+export async function myByClass(req, res) {
+  const userId = req.user.id;
+  const classId = req.query.class_id;
+  if (!classId)
+    return res.status(400).json({ ok: false, message: "Missing class_id" });
+
+  try {
+    const [rows] = await pool.query(
+      `SELECT e.session_id
+       FROM enrollments e
+       JOIN sessions s ON s.id = e.session_id
+       WHERE e.user_id=? AND s.class_id=? AND e.status IN ('ENROLLED','WAITLIST')`,
+      [userId, classId]
+    );
+    return res.json({ ok: true, session_ids: rows.map((r) => r.session_id) });
+  } catch (e) {
+    console.error("myByClass error:", e);
     return res.status(500).json({ ok: false, message: "Server error" });
   }
 }
