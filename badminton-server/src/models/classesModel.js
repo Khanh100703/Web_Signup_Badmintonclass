@@ -26,8 +26,12 @@ export async function getClasses(filters = {}) {
 
   const [rows] = await pool.query(
     `
-    SELECT 
-      c.id, c.title, c.description, c.capacity AS class_capacity,
+    SELECT
+      c.id,
+      c.title,
+      c.description,
+      c.capacity AS class_capacity,
+      c.image_url,
       c.coach_id, co.name AS coach_name,
       c.location_id, l.name AS location_name,
       c.level_id, lv.name AS level_name,
@@ -56,7 +60,7 @@ export async function getClasses(filters = {}) {
 
 export async function getClassDetail(id) {
   const [[cls]] = await pool.query(
-    `SELECT c.*, co.name AS coach_name, l.name AS location_name
+    `SELECT c.*, co.name AS coach_name, l.name AS location_name, c.image_url
      FROM classes c
      LEFT JOIN coaches co ON co.id = c.coach_id
      LEFT JOIN locations l ON l.id = c.location_id
@@ -85,13 +89,23 @@ export async function createClass(data) {
     location_id = null,
     level_id = null,
     category_id = null,
+    image_url = null,
   } = data;
 
   const [result] = await pool.query(
     `INSERT INTO classes
-      (title, description, capacity, coach_id, location_id, level_id, category_id)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    [title, description, capacity, coach_id, location_id, level_id, category_id]
+      (title, description, capacity, coach_id, location_id, level_id, category_id, image_url)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      title,
+      description,
+      capacity,
+      coach_id,
+      location_id,
+      level_id,
+      category_id,
+      image_url,
+    ]
   );
   return result.insertId;
 }
@@ -108,6 +122,7 @@ export async function updateClass(id, data) {
     "location_id",
     "level_id",
     "category_id",
+    "image_url",
   ];
   for (const k of allow) {
     if (data[k] !== undefined) {

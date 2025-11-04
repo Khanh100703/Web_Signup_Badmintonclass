@@ -192,3 +192,24 @@ export async function myByClass(req, res) {
     return res.status(500).json({ ok: false, message: "Server error" });
   }
 }
+
+export async function adminList(req, res) {
+  try {
+    const [rows] = await pool.query(
+      `SELECT e.id, e.status, e.created_at,
+              u.name AS user_name, u.email AS user_email,
+              s.start_time, s.end_time,
+              c.title AS class_title
+       FROM enrollments e
+       JOIN users u ON u.id = e.user_id
+       JOIN sessions s ON s.id = e.session_id
+       JOIN classes c ON c.id = s.class_id
+       ORDER BY e.created_at DESC
+       LIMIT 200`
+    );
+    return res.json({ ok: true, data: rows });
+  } catch (e) {
+    console.error("adminList enrollments error:", e);
+    return res.status(500).json({ ok: false, message: "Server error" });
+  }
+}

@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import AuthProvider from "./contexts/AuthProvider.jsx";
 import RequireAuth from "./components/RequireAuth.jsx";
+import RequireRole from "./components/RequireRole.jsx";
 
 import Home from "./pages/Home.jsx";
 import Classes from "./pages/Classes.jsx";
@@ -15,6 +16,8 @@ import ResetPassword from "./pages/ResetPassword.jsx";
 import Coaches from "./pages/Coaches.jsx";
 import Contact from "./pages/Contact.jsx";
 import VerifyRegister from "./pages/VerifyRegister.jsx";
+import CoachClasses from "./pages/CoachClasses.jsx";
+import AdminDashboard from "./pages/AdminDashboard.jsx";
 
 export default function App() {
   return (
@@ -40,6 +43,22 @@ export default function App() {
                   <RequireAuth>
                     <MySchedule />
                   </RequireAuth>
+                }
+              />
+              <Route
+                path="/coach/classes"
+                element={
+                  <RequireRole roles={["COACH", "ADMIN"]}>
+                    <CoachClasses />
+                  </RequireRole>
+                }
+              />
+              <Route
+                path="/admin"
+                element={
+                  <RequireRole roles={["ADMIN"]}>
+                    <AdminDashboard />
+                  </RequireRole>
                 }
               />
               <Route path="*" element={<Navigate to="/" replace />} />

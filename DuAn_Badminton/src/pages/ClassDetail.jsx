@@ -4,6 +4,12 @@ import { api } from "../services/api.js";
 import { useAuth } from "../hooks/useAuth.js";
 import { Link } from "react-router-dom";
 
+const FALLBACK_IMAGES = [
+  "https://images.unsplash.com/photo-1600880292089-90a7e086ee0c?auto=format&fit=crop&w=1200&q=80",
+  "https://images.unsplash.com/photo-1517649763962-0c623066013b?auto=format&fit=crop&w=1200&q=80",
+  "https://images.unsplash.com/photo-1521412644187-c49fa049e84d?auto=format&fit=crop&w=1200&q=80",
+];
+
 export default function ClassDetail() {
   const { id } = useParams();
   const { user } = useAuth();
@@ -26,6 +32,13 @@ export default function ClassDetail() {
     () => clazz?.level ?? clazz?.difficulty ?? clazz?.level?.name ?? null,
     [clazz]
   );
+  const heroImage = useMemo(() => {
+    if (!clazz) return FALLBACK_IMAGES[0];
+    return (
+      clazz.image_url ||
+      FALLBACK_IMAGES[Number(clazz.id || id || 0) % FALLBACK_IMAGES.length]
+    );
+  }, [clazz, id]);
 
   useEffect(() => {
     let mounted = true;
@@ -134,6 +147,15 @@ export default function ClassDetail() {
         >
           ← Quay lại danh sách khóa học
         </Link>
+      </div>
+      <div className="lg:col-span-2">
+        <div className="h-60 md:h-72 lg:h-80 rounded-2xl overflow-hidden border">
+          <img
+            src={heroImage}
+            alt={clazz.title}
+            className="h-full w-full object-cover"
+          />
+        </div>
       </div>
       {/* LEFT */}
       <div className="lg:col-span-2">

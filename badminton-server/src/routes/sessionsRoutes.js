@@ -1,15 +1,18 @@
 import { Router } from "express";
 import {
+  listSessions,
   listSessionsByClass,
   createSession,
   updateSession,
   deleteSession,
+  notifySession,
 } from "../controllers/sessionsController.js";
 import { requireAuth, requireRole } from "../middlewares/auth.js";
 import { body } from "express-validator";
 
 const router = Router();
 
+router.get("/", requireAuth, requireRole(["ADMIN"]), listSessions);
 router.get("/class/:classId", listSessionsByClass);
 
 router.post(
@@ -24,5 +27,11 @@ router.post(
 
 router.put("/:id", requireAuth, requireRole(["ADMIN"]), updateSession);
 router.delete("/:id", requireAuth, requireRole(["ADMIN"]), deleteSession);
+router.post(
+  "/:id/notify",
+  requireAuth,
+  requireRole(["ADMIN", "COACH"]),
+  notifySession
+);
 
 export default router;

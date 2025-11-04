@@ -1,5 +1,8 @@
 // ✅ Dùng named export cho pool (khớp với db.js của bạn)
 import { pool } from "../db.js";
+import * as classesModel from "../models/classesModel.js";
+import * as sessionsModel from "../models/sessionsModel.js";
+import { findCoachByUserId } from "../models/coachesModel.js";
 
 // ===== COACHES CRUD =====
 export async function list(req, res) {
@@ -12,6 +15,50 @@ export async function list(req, res) {
     return res.json({ ok: true, data: rows });
   } catch (e) {
     console.error("coaches.list error:", e);
+    return res.status(500).json({ ok: false, message: "Server error" });
+  }
+}
+
+export async function myProfile(req, res) {
+  try {
+    const coach = await findCoachByUserId(req.user.id);
+    return res.json({ ok: true, data: coach || null });
+  } catch (e) {
+    console.error("coaches.myProfile error:", e);
+    return res.status(500).json({ ok: false, message: "Server error" });
+  }
+}
+
+export async function myClasses(req, res) {
+  try {
+    const coach = await findCoachByUserId(req.user.id);
+    if (!coach) {
+      return res.json({ ok: true, coach: null, data: [] });
+    }
+
+    const classes = await classesModel.getClasses({ coach_id: coach.id });
+    if (!classes.length) {
+      return res.json({ ok: true, coach, data: [] });
+    }
+
+    const ids = classes.map((c) => c.id);
+    const sessions = await sessionsModel.getSessionsByClassIds(ids);
+    const grouped = sessions.reduce((acc, s) => {
+      if (!acc[s.class_id]) acc[s.class_id] = [];
+      acc[s.class_id].push(s);
+      return acc;
+    }, {});
+
+    const enriched = classes.map((c) => ({
+      ...c,
+      sessions: (grouped[c.id] || []).sort((a, b) =>
+        new Date(a.start_time) - new Date(b.start_time)
+      ),
+    }));
+
+    return res.json({ ok: true, coach, data: enriched });
+  } catch (e) {
+    console.error("coaches.myClasses error:", e);
     return res.status(500).json({ ok: false, message: "Server error" });
   }
 }

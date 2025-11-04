@@ -1,5 +1,6 @@
 import { pool } from "../db.js";
 import * as classesModel from "../models/classesModel.js";
+import { findCoachByUserId } from "../models/coachesModel.js";
 
 /**
  * GET /api/classes
@@ -65,6 +66,7 @@ export async function getClassDetail(req, res) {
       location_id: c.location_id || null, // 👈 thêm id để frontend fallback call location
       level_id: c.level_id || null,
       category_id: c.category_id || null,
+      image_url: c.image_url || null,
       coach: c.coach_id
         ? {
             id: c.coach_id,
@@ -128,6 +130,7 @@ export async function updateClass(req, res) {
       "location_id",
       "level_id",
       "category_id",
+      "image_url",
       "start_date",
       "end_date",
       "price",
@@ -205,5 +208,19 @@ export async function deleteClass(req, res) {
 
     console.error("deleteClass error:", e);
     return res.status(500).json({ ok: false, message: "Delete failed" });
+  }
+}
+
+export async function listMyClasses(req, res) {
+  try {
+    const coach = await findCoachByUserId(req.user.id);
+    if (!coach) {
+      return res.json({ ok: true, coach: null, data: [] });
+    }
+    const data = await classesModel.getClasses({ coach_id: coach.id });
+    return res.json({ ok: true, coach, data });
+  } catch (e) {
+    console.error("listMyClasses error:", e);
+    return res.status(500).json({ ok: false, message: "Server error" });
   }
 }

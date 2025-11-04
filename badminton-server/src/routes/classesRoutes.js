@@ -5,6 +5,7 @@ import {
   getClassDetail,
   updateClass,
   deleteClass,
+  listMyClasses,
 } from "../controllers/classesController.js";
 import { requireAuth, requireRole } from "../middlewares/auth.js";
 import { body } from "express-validator";
@@ -12,6 +13,12 @@ import { body } from "express-validator";
 const router = Router();
 
 router.get("/", listClasses);
+router.get(
+  "/mine",
+  requireAuth,
+  requireRole(["COACH", "ADMIN"]),
+  listMyClasses
+);
 router.get("/:id", getClassDetail);
 
 // Admin CRUD

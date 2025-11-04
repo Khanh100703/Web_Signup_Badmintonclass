@@ -29,6 +29,22 @@ export default function Navbar() {
             Huấn luyện viên
           </NavLink>
           <NavLink to="/contact">Liên hệ</NavLink>
+          {user?.role === "COACH" && (
+            <NavLink
+              to="/coach/classes"
+              className={({ isActive }) => (isActive ? "font-semibold" : "")}
+            >
+              Lớp của tôi
+            </NavLink>
+          )}
+          {user?.role === "ADMIN" && (
+            <NavLink
+              to="/admin"
+              className={({ isActive }) => (isActive ? "font-semibold" : "")}
+            >
+              Quản trị
+            </NavLink>
+          )}
           {user && (
             <NavLink
               to="/me/schedule"
