@@ -6,6 +6,14 @@ const router = Router();
 
 // Public
 router.get("/", CoachesController.list);
+
+router.get(
+  "/me/classes",
+  requireAuth,
+  requireRole(["COACH", "ADMIN"]),
+  CoachesController.myClasses
+);
+
 router.get("/:id", CoachesController.detail);
 
 // Admin CRUD

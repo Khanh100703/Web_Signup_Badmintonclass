@@ -66,6 +66,7 @@ export const api = {
   get: (url) => request("GET", url),
   post: (url, b) => request("POST", url, b),
   put: (url, b) => request("PUT", url, b),
+  patch: (url, b) => request("PATCH", url, b),
   del: (url) => request("DELETE", url),
   setToken: () => {}, // giữ API cũ, không cần dùng nữa
 };

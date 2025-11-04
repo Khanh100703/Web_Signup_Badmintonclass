@@ -37,6 +37,22 @@ export default function Navbar() {
               Lịch học của tôi
             </NavLink>
           )}
+          {user?.role === "COACH" && (
+            <NavLink
+              to="/coach/classes"
+              className={({ isActive }) => (isActive ? "font-semibold" : "")}
+            >
+              Lớp của tôi
+            </NavLink>
+          )}
+          {user?.role === "ADMIN" && (
+            <NavLink
+              to="/admin"
+              className={({ isActive }) => (isActive ? "font-semibold" : "")}
+            >
+              Quản trị
+            </NavLink>
+          )}
         </nav>
         <div className="flex items-center gap-3">
           {user ? (
