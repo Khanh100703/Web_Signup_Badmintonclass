@@ -1,4 +1,4 @@
-import pool from "../db.js";
+import {pool} from "../db.js";
 import dayjs from "dayjs";
 
 function overlaps(aStart, aEnd, bStart, bEnd) {

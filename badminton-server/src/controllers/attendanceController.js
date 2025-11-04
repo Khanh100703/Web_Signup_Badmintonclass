@@ -1,4 +1,4 @@
-import pool from "../db.js";
+import { pool } from "../db.js";
 
 export async function mark(req, res) {
   const { items } = req.body; // [{enrollment_id, status, note}]

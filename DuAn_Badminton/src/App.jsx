@@ -14,6 +14,7 @@ import ForgotPassword from "./pages/ForgotPassword.jsx";
 import ResetPassword from "./pages/ResetPassword.jsx";
 import Coaches from "./pages/Coaches.jsx";
 import Contact from "./pages/Contact.jsx";
+import VerifyRegister from "./pages/VerifyRegister.jsx";
 
 export default function App() {
   return (
@@ -32,6 +33,7 @@ export default function App() {
               <Route path="/register" element={<Register />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route path="/reset-password" element={<ResetPassword />} />
+              <Route path="/verify" element={<VerifyRegister />} />
               <Route
                 path="/me/schedule"
                 element={

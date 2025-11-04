@@ -11,7 +11,7 @@ export default function ForgotPassword() {
     setMsg("");
     setErr("");
     try {
-      const res = await api.post("/api/auth/forgot-password", { email });
+      const res = await api.post("/api/users/forgot-password", { email });
       if (res?.ok)
         setMsg("Đã gửi hướng dẫn đặt lại mật khẩu vào email của bạn.");
       else setErr(res?.message || "Không gửi được email.");

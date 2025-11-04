@@ -11,26 +11,55 @@ function authHeader() {
 
 async function parse(res) {
   const ct = res.headers.get("content-type") || "";
-  const body = ct.includes("json") ? await res.json() : await res.text();
+  const isJson = ct.includes("json");
+  const body = isJson ? await res.json().catch(() => ({})) : await res.text();
 
   if (!res.ok) {
-    // Luôn trả về object có ok=false để UI hiển thị lỗi
-    const message = (body && body.message) || `HTTP ${res.status}`;
+    // Ưu tiên message từ backend; nếu là validator -> lấy errors[0].msg
+    const message =
+      (isJson &&
+        (body?.message ||
+          (Array.isArray(body?.errors) && body.errors[0]?.msg))) ||
+      `HTTP ${res.status}`;
     return { ok: false, status: res.status, message, data: body };
   }
-  // Chuẩn hóa trả về: đảm bảo có ok=true
-  if (body && typeof body === "object" && "ok" in body) return body;
-  if (typeof body === "object") return { ok: true, ...body };
+
+  if (isJson) {
+    if (body && typeof body === "object" && "ok" in body) return body;
+    return { ok: true, ...body };
+  }
   return { ok: true, data: body };
 }
 
+// --- Hàm request có try/catch để bắt lỗi mạng/CORS/URL sai ---
 async function request(method, url, body) {
-  const res = await fetch(API_URL + url, {
-    method,
-    headers: { "Content-Type": "application/json", ...authHeader() },
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  return parse(res);
+  try {
+    const fullUrl = (API_URL || "").replace(/\/+$/, "") + url; // bỏ dấu / dư ở cuối API_URL
+    // Log nhẹ 1 lần cho DEV: API_URL và URL
+    if (import.meta.env?.MODE !== "production" && !request._logged) {
+      request._logged = true;
+      console.log("[api] API_URL =", API_URL, "Example:", fullUrl);
+    }
+
+    const res = await fetch(fullUrl, {
+      method,
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        ...authHeader(),
+      },
+      body: body ? JSON.stringify(body) : undefined,
+      // credentials: "include", // chỉ bật nếu bạn dùng cookie/session
+      mode: "cors",
+    });
+    return parse(res);
+  } catch (err) {
+    // Lỗi mạng/CORS/URL sai sẽ vào đây
+    const message =
+      err?.message ||
+      "Network error (CORS/URL sai hoặc server không reachable).";
+    return { ok: false, status: 0, message, data: null };
+  }
 }
 
 export const api = {

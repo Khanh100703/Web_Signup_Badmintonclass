@@ -28,6 +28,7 @@ export default function Navbar() {
           >
             Huấn luyện viên
           </NavLink>
+          <NavLink to="/contact">Liên hệ</NavLink>
           {user && (
             <NavLink
               to="/me/schedule"

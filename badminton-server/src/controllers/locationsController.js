@@ -1,4 +1,4 @@
-import pool from "../db.js";
+import { pool } from "../db.js";
 
 export async function list(req, res) {
   const [rows] = await pool.query(

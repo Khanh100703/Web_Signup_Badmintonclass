@@ -1,94 +1,72 @@
+// src/pages/Contact.jsx
+import { useState } from "react";
+import { api } from "../services/api";
+
 export default function Contact() {
-  const key = import.meta.env.VITE_GMAPS_API_KEY || "";
-  const query = import.meta.env.VITE_MAP_QUERY || "";
-  const lat = import.meta.env.VITE_MAP_LAT || "10.776889";
-  const lng = import.meta.env.VITE_MAP_LNG || "106.700806";
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [subject, setSubject] = useState("");
+  const [message, setMessage] = useState("");
+  const [err, setErr] = useState("");
+  const [ok, setOk] = useState("");
 
-  const mapSrc =
-    key && query
-      ? `https://www.google.com/maps/embed/v1/place?key=${encodeURIComponent(
-          key
-        )}&q=${encodeURIComponent(query)}`
-      : `https://www.google.com/maps?q=${encodeURIComponent(
-          `${lat},${lng}`
-        )}&z=15&output=embed`;
-
-  const onSubmit = (e) => {
+  async function onSubmit(e) {
     e.preventDefault();
-    const fd = new FormData(e.currentTarget);
-    const payload = Object.fromEntries(fd.entries());
-    console.log("Contact form:", payload);
-    alert("Cảm ơn bạn! Chúng tôi sẽ liên hệ sớm.");
-    e.currentTarget.reset();
-  };
+    setErr("");
+    setOk("");
+    const res = await api.post("/api/contacts", {
+      name,
+      email,
+      subject,
+      message,
+    });
+    if (res.ok) {
+      setOk("Gửi liên hệ thành công! Chúng tôi sẽ phản hồi sớm.");
+      setName("");
+      setEmail("");
+      setSubject("");
+      setMessage("");
+    } else {
+      setErr(res.message || "Gửi không thành công.");
+    }
+  }
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-10 grid lg:grid-cols-2 gap-8">
-      <div>
-        <h1 className="text-3xl font-bold mb-4">Liên hệ</h1>
-        <p className="text-gray-600 mb-6">
-          Điền thông tin để được tư vấn khóa học phù hợp hoặc đặt lịch trải
-          nghiệm.
-        </p>
-
-        <form onSubmit={onSubmit} className="space-y-4">
-          <div className="grid sm:grid-cols-2 gap-4">
-            <div>
-              <label className="text-sm">Họ tên</label>
-              <input
-                name="name"
-                required
-                className="mt-1 w-full rounded-xl border px-3 py-2"
-              />
-            </div>
-            <div>
-              <label className="text-sm">Số điện thoại</label>
-              <input
-                name="phone"
-                type="tel"
-                required
-                className="mt-1 w-full rounded-xl border px-3 py-2"
-              />
-            </div>
-          </div>
-          <div>
-            <label className="text-sm">Email</label>
-            <input
-              name="email"
-              type="email"
-              className="mt-1 w-full rounded-xl border px-3 py-2"
-            />
-          </div>
-          <div>
-            <label className="text-sm">Nội dung</label>
-            <textarea
-              name="message"
-              rows={5}
-              className="mt-1 w-full rounded-xl border px-3 py-2"
-              placeholder="Bạn muốn đăng ký lớp nào, thời gian mong muốn…"
-            />
-          </div>
-          <button
-            type="submit"
-            className="px-5 py-3 rounded-2xl bg-black text-white"
-          >
-            Gửi liên hệ
-          </button>
-        </form>
-      </div>
-
-      <div className="rounded-2xl overflow-hidden border h-[380px]">
-        <iframe
-          title="Google Map"
-          src={mapSrc}
-          width="100%"
-          height="100%"
-          style={{ border: 0 }}
-          allowFullScreen=""
-          loading="lazy"
-          referrerPolicy="no-referrer-when-downgrade"
+    <div className="max-w-xl mx-auto py-10">
+      <h1 className="text-2xl font-bold mb-6">Liên hệ</h1>
+      <form onSubmit={onSubmit} className="space-y-4">
+        <input
+          className="w-full border rounded-2xl px-4 py-3"
+          placeholder="Họ và tên"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
         />
-      </div>
+        <input
+          className="w-full border rounded-2xl px-4 py-3"
+          placeholder="Email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          type="email"
+        />
+        <input
+          className="w-full border rounded-2xl px-4 py-3"
+          placeholder="Tiêu đề"
+          value={subject}
+          onChange={(e) => setSubject(e.target.value)}
+        />
+        <textarea
+          className="w-full border rounded-2xl px-4 py-3"
+          placeholder="Nội dung"
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          rows={5}
+        />
+        {err && <div className="text-red-600 text-sm">{err}</div>}
+        {ok && <div className="text-emerald-600 text-sm">{ok}</div>}
+        <button className="px-4 py-3 rounded-2xl bg-black text-white">
+          Gửi
+        </button>
+      </form>
     </div>
   );
 }

@@ -1,13 +1,10 @@
-import { useState, useMemo } from "react";
-import { useSearchParams, useNavigate } from "react-router-dom";
+// DuAn_Badminton/src/pages/ResetPassword.jsx
+import { useState } from "react";
 import { api } from "../services/api.js";
 
 export default function ResetPassword() {
-  const [sp] = useSearchParams();
-  const token = useMemo(() => sp.get("token") || "", [sp]);
-  const nav = useNavigate();
-  const [password, setPassword] = useState("");
-  const [confirm, setConfirm] = useState("");
+  const [email, setEmail] = useState("");
+  const [otp, setOtp] = useState("");
   const [err, setErr] = useState("");
   const [ok, setOk] = useState("");
 
@@ -15,49 +12,54 @@ export default function ResetPassword() {
     e.preventDefault();
     setErr("");
     setOk("");
-    if (!token) return setErr("Thiếu token đặt lại mật khẩu.");
-    if (password.length < 6) return setErr("Mật khẩu tối thiểu 6 ký tự.");
-    if (password !== confirm) return setErr("Mật khẩu nhập lại không khớp.");
+
+    if (!email) return setErr("Vui lòng nhập email.");
+    if (!otp || otp.length !== 6) return setErr("OTP phải gồm 6 ký tự.");
 
     try {
-      const res = await api.post("/api/auth/reset-password", {
-        token,
-        password,
-      });
+      const res = await api.post("/api/users/reset-password", { email, otp });
       if (res?.ok) {
-        setOk("Đặt lại mật khẩu thành công! Vui lòng đăng nhập.");
-        setTimeout(() => nav("/login"), 1000);
-      } else setErr(res?.message || "Đặt lại mật khẩu thất bại.");
-      // eslint-disable-next-line no-unused-vars
+        setOk(
+          "Đặt lại mật khẩu thành công! Vui lòng kiểm tra email để nhận mật khẩu mới."
+        );
+      } else {
+        setErr(res?.message || "Có lỗi xảy ra.");
+      }
     } catch (e) {
-      setErr("Lỗi máy chủ");
+      setErr(e?.message || "Lỗi máy chủ.");
     }
   }
 
   return (
-    <div className="max-w-md mx-auto px-4 py-14">
-      <h1 className="text-3xl font-bold mb-6">Đặt lại mật khẩu</h1>
-      <form onSubmit={onSubmit} className="grid gap-4">
+    <div className="max-w-md mx-auto py-10">
+      <h1 className="text-2xl font-bold mb-6">Đặt lại mật khẩu (OTP)</h1>
+      <form onSubmit={onSubmit} className="space-y-4">
         <input
-          className="border rounded-xl px-4 py-3"
-          placeholder="Mật khẩu mới"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          type="password"
+          className="w-full border rounded-2xl px-4 py-3"
+          placeholder="Email đã đăng ký"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          type="email"
         />
         <input
-          className="border rounded-xl px-4 py-3"
-          placeholder="Nhập lại mật khẩu"
-          value={confirm}
-          onChange={(e) => setConfirm(e.target.value)}
-          type="password"
+          className="w-full border rounded-2xl px-4 py-3"
+          placeholder="OTP (6 ký tự)"
+          value={otp}
+          onChange={(e) => setOtp(e.target.value)}
+          maxLength={6}
         />
+
         {err && <div className="text-red-600 text-sm">{err}</div>}
         {ok && <div className="text-emerald-600 text-sm">{ok}</div>}
-        <button className="px-4 py-3 rounded-2xl bg-black text-white">
+
+        <button className="px-4 py-3 rounded-2xl bg-black text-white w-full">
           Xác nhận
         </button>
       </form>
+
+      <p className="text-sm text-gray-500 mt-3">
+        Mẹo: Kiểm tra mục Spam/Promotions nếu chưa thấy email.
+      </p>
     </div>
   );
 }

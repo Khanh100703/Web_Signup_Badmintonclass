@@ -1,4 +1,4 @@
-import pool from "../db.js";
+import { pool } from "../db.js";
 import jwt from "jsonwebtoken";
 
 function signAccess(payload) {
