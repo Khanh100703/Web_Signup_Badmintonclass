@@ -148,13 +148,13 @@ export default function AdminDashboard() {
     if (activeTab === "enrollments" || activeTab === "overview") {
       loadEnrollments();
     }
-  }, [activeTab]);
+  }, [activeTab, loadReport]);
 
   useEffect(() => {
     if (activeTab === "reports") {
       loadReport();
     }
-  }, [reportFilters]);
+  }, [activeTab, loadReport, reportFilters]);
 
   async function loadUsers() {
     setUsersLoading(true);
@@ -203,7 +203,13 @@ export default function AdminDashboard() {
     e.preventDefault();
     try {
       await api.post("/api/coaches", newCoach);
-      setNewCoach({ name: "", email: "", phone: "", experience: "", photo_url: "" });
+      setNewCoach({
+        name: "",
+        email: "",
+        phone: "",
+        experience: "",
+        photo_url: "",
+      });
       loadCoaches();
     } catch (err) {
       alert(err?.message || "Không tạo được huấn luyện viên");
@@ -303,9 +309,13 @@ export default function AdminDashboard() {
       const payload = {
         ...editingClass,
         coach_id: editingClass.coach_id ? Number(editingClass.coach_id) : null,
-        location_id: editingClass.location_id ? Number(editingClass.location_id) : null,
+        location_id: editingClass.location_id
+          ? Number(editingClass.location_id)
+          : null,
         level_id: editingClass.level_id ? Number(editingClass.level_id) : null,
-        category_id: editingClass.category_id ? Number(editingClass.category_id) : null,
+        category_id: editingClass.category_id
+          ? Number(editingClass.category_id)
+          : null,
         capacity: editingClass.capacity ? Number(editingClass.capacity) : null,
         start_date: editingClass.start_date || null,
         end_date: editingClass.end_date || null,
@@ -372,7 +382,9 @@ export default function AdminDashboard() {
     try {
       const payload = {
         ...editingLocation,
-        capacity: editingLocation.capacity ? Number(editingLocation.capacity) : null,
+        capacity: editingLocation.capacity
+          ? Number(editingLocation.capacity)
+          : null,
       };
       await api.put(`/api/locations/${editingLocationId}`, payload);
       setEditingLocationId(null);
@@ -439,7 +451,9 @@ export default function AdminDashboard() {
       const payload = {
         start_time: fromDateTimeLocal(editingSession.start_time),
         end_time: fromDateTimeLocal(editingSession.end_time),
-        capacity: editingSession.capacity ? Number(editingSession.capacity) : null,
+        capacity: editingSession.capacity
+          ? Number(editingSession.capacity)
+          : null,
       };
       await api.put(`/api/sessions/${editingSessionId}`, payload);
       setEditingSessionId(null);
@@ -516,6 +530,7 @@ export default function AdminDashboard() {
     }
   }
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   async function loadReport() {
     setReportLoading(true);
     try {
@@ -535,7 +550,9 @@ export default function AdminDashboard() {
   }
 
   const overviewStats = useMemo(() => {
-    const totalStudents = enrollments.filter((e) => e.status === "ENROLLED").length;
+    const totalStudents = enrollments.filter(
+      (e) => e.status === "ENROLLED"
+    ).length;
     return [
       { label: "Khóa học", value: classesData.length },
       { label: "Huấn luyện viên", value: coaches.length },
@@ -559,8 +576,9 @@ export default function AdminDashboard() {
         <div className="rounded-2xl border p-6 bg-white">
           <h2 className="text-xl font-semibold mb-4">Hoạt động gần đây</h2>
           <p className="text-sm text-gray-600">
-            Sử dụng các tab bên trên để quản lý tài khoản, lớp học, buổi học và theo dõi
-            báo cáo thống kê. Các thay đổi sẽ được cập nhật theo thời gian thực cho toàn bộ hệ thống.
+            Sử dụng các tab bên trên để quản lý tài khoản, lớp học, buổi học và
+            theo dõi báo cáo thống kê. Các thay đổi sẽ được cập nhật theo thời
+            gian thực cho toàn bộ hệ thống.
           </p>
         </div>
       </div>
@@ -572,7 +590,9 @@ export default function AdminDashboard() {
       <div>
         <h2 className="text-2xl font-semibold mb-4">Quản lý tài khoản</h2>
         {usersLoading ? (
-          <div className="p-6 text-gray-500">Đang tải danh sách người dùng…</div>
+          <div className="p-6 text-gray-500">
+            Đang tải danh sách người dùng…
+          </div>
         ) : (
           <div className="overflow-x-auto rounded-2xl border">
             <table className="w-full text-sm">
@@ -593,7 +613,9 @@ export default function AdminDashboard() {
                     <td className="p-3">
                       <select
                         value={user.role}
-                        onChange={(e) => changeUserRole(user.id, e.target.value)}
+                        onChange={(e) =>
+                          changeUserRole(user.id, e.target.value)
+                        }
                         className="border rounded-lg px-3 py-1"
                       >
                         <option value="USER">USER</option>
@@ -603,7 +625,9 @@ export default function AdminDashboard() {
                     </td>
                     <td className="p-3">
                       {user.is_locked ? (
-                        <span className="text-red-500 font-semibold">Đã khoá</span>
+                        <span className="text-red-500 font-semibold">
+                          Đã khoá
+                        </span>
                       ) : (
                         <span className="text-green-600">Hoạt động</span>
                       )}
@@ -647,7 +671,9 @@ export default function AdminDashboard() {
               <input
                 required
                 value={newCoach.name}
-                onChange={(e) => setNewCoach((v) => ({ ...v, name: e.target.value }))}
+                onChange={(e) =>
+                  setNewCoach((v) => ({ ...v, name: e.target.value }))
+                }
                 className="w-full border rounded-xl px-3 py-2"
               />
             </div>
@@ -656,23 +682,33 @@ export default function AdminDashboard() {
               <input
                 type="email"
                 value={newCoach.email}
-                onChange={(e) => setNewCoach((v) => ({ ...v, email: e.target.value }))}
+                onChange={(e) =>
+                  setNewCoach((v) => ({ ...v, email: e.target.value }))
+                }
                 className="w-full border rounded-xl px-3 py-2"
               />
             </div>
             <div className="space-y-2">
-              <label className="block text-sm font-semibold">Số điện thoại</label>
+              <label className="block text-sm font-semibold">
+                Số điện thoại
+              </label>
               <input
                 value={newCoach.phone}
-                onChange={(e) => setNewCoach((v) => ({ ...v, phone: e.target.value }))}
+                onChange={(e) =>
+                  setNewCoach((v) => ({ ...v, phone: e.target.value }))
+                }
                 className="w-full border rounded-xl px-3 py-2"
               />
             </div>
             <div className="space-y-2">
-              <label className="block text-sm font-semibold">Ảnh đại diện (URL)</label>
+              <label className="block text-sm font-semibold">
+                Ảnh đại diện (URL)
+              </label>
               <input
                 value={newCoach.photo_url}
-                onChange={(e) => setNewCoach((v) => ({ ...v, photo_url: e.target.value }))}
+                onChange={(e) =>
+                  setNewCoach((v) => ({ ...v, photo_url: e.target.value }))
+                }
                 className="w-full border rounded-xl px-3 py-2"
               />
             </div>
@@ -680,18 +716,24 @@ export default function AdminDashboard() {
               <label className="block text-sm font-semibold">Kinh nghiệm</label>
               <textarea
                 value={newCoach.experience}
-                onChange={(e) => setNewCoach((v) => ({ ...v, experience: e.target.value }))}
+                onChange={(e) =>
+                  setNewCoach((v) => ({ ...v, experience: e.target.value }))
+                }
                 className="w-full border rounded-xl px-3 py-2 min-h-[80px]"
               />
             </div>
             <div className="md:col-span-2 flex justify-end">
-              <button className="px-4 py-2 rounded-xl bg-black text-white">Thêm huấn luyện viên</button>
+              <button className="px-4 py-2 rounded-xl bg-black text-white">
+                Thêm huấn luyện viên
+              </button>
             </div>
           </form>
         </div>
 
         <div>
-          <h2 className="text-2xl font-semibold mb-4">Danh sách huấn luyện viên</h2>
+          <h2 className="text-2xl font-semibold mb-4">
+            Danh sách huấn luyện viên
+          </h2>
           {coachesLoading ? (
             <div className="p-6 text-gray-500">Đang tải dữ liệu…</div>
           ) : (
@@ -704,35 +746,50 @@ export default function AdminDashboard() {
                         className="border rounded-xl px-3 py-2"
                         value={editingCoach.name}
                         onChange={(e) =>
-                          setEditingCoach((v) => ({ ...v, name: e.target.value }))
+                          setEditingCoach((v) => ({
+                            ...v,
+                            name: e.target.value,
+                          }))
                         }
                       />
                       <input
                         className="border rounded-xl px-3 py-2"
                         value={editingCoach.email || ""}
                         onChange={(e) =>
-                          setEditingCoach((v) => ({ ...v, email: e.target.value }))
+                          setEditingCoach((v) => ({
+                            ...v,
+                            email: e.target.value,
+                          }))
                         }
                       />
                       <input
                         className="border rounded-xl px-3 py-2"
                         value={editingCoach.phone || ""}
                         onChange={(e) =>
-                          setEditingCoach((v) => ({ ...v, phone: e.target.value }))
+                          setEditingCoach((v) => ({
+                            ...v,
+                            phone: e.target.value,
+                          }))
                         }
                       />
                       <input
                         className="border rounded-xl px-3 py-2"
                         value={editingCoach.photo_url || ""}
                         onChange={(e) =>
-                          setEditingCoach((v) => ({ ...v, photo_url: e.target.value }))
+                          setEditingCoach((v) => ({
+                            ...v,
+                            photo_url: e.target.value,
+                          }))
                         }
                       />
                       <textarea
                         className="md:col-span-2 border rounded-xl px-3 py-2"
                         value={editingCoach.experience || ""}
                         onChange={(e) =>
-                          setEditingCoach((v) => ({ ...v, experience: e.target.value }))
+                          setEditingCoach((v) => ({
+                            ...v,
+                            experience: e.target.value,
+                          }))
                         }
                       />
                       <div className="md:col-span-2 flex justify-end gap-3">
@@ -758,9 +815,15 @@ export default function AdminDashboard() {
                   ) : (
                     <div className="flex flex-wrap items-start justify-between gap-4">
                       <div>
-                        <div className="text-lg font-semibold">{coach.name}</div>
-                        <div className="text-sm text-gray-600">{coach.email || "(chưa có email)"}</div>
-                        <div className="text-sm text-gray-600">{coach.phone || "(chưa có SĐT)"}</div>
+                        <div className="text-lg font-semibold">
+                          {coach.name}
+                        </div>
+                        <div className="text-sm text-gray-600">
+                          {coach.email || "(chưa có email)"}
+                        </div>
+                        <div className="text-sm text-gray-600">
+                          {coach.phone || "(chưa có SĐT)"}
+                        </div>
                         <p className="mt-2 text-sm text-gray-600 leading-relaxed whitespace-pre-line">
                           {coach.experience || "Chưa cập nhật mô tả"}
                         </p>
@@ -809,16 +872,22 @@ export default function AdminDashboard() {
               <input
                 required
                 value={newClass.title}
-                onChange={(e) => setNewClass((v) => ({ ...v, title: e.target.value }))}
+                onChange={(e) =>
+                  setNewClass((v) => ({ ...v, title: e.target.value }))
+                }
                 className="w-full border rounded-xl px-3 py-2"
               />
             </div>
             <div className="space-y-2">
-              <label className="block text-sm font-semibold">Huấn luyện viên</label>
+              <label className="block text-sm font-semibold">
+                Huấn luyện viên
+              </label>
               <select
                 required
                 value={newClass.coach_id}
-                onChange={(e) => setNewClass((v) => ({ ...v, coach_id: e.target.value }))}
+                onChange={(e) =>
+                  setNewClass((v) => ({ ...v, coach_id: e.target.value }))
+                }
                 className="w-full border rounded-xl px-3 py-2"
               >
                 <option value="">-- Chọn --</option>
@@ -833,7 +902,9 @@ export default function AdminDashboard() {
               <label className="block text-sm font-semibold">Địa điểm</label>
               <select
                 value={newClass.location_id}
-                onChange={(e) => setNewClass((v) => ({ ...v, location_id: e.target.value }))}
+                onChange={(e) =>
+                  setNewClass((v) => ({ ...v, location_id: e.target.value }))
+                }
                 className="w-full border rounded-xl px-3 py-2"
               >
                 <option value="">-- Chọn --</option>
@@ -848,7 +919,9 @@ export default function AdminDashboard() {
               <label className="block text-sm font-semibold">Trình độ</label>
               <select
                 value={newClass.level_id}
-                onChange={(e) => setNewClass((v) => ({ ...v, level_id: e.target.value }))}
+                onChange={(e) =>
+                  setNewClass((v) => ({ ...v, level_id: e.target.value }))
+                }
                 className="w-full border rounded-xl px-3 py-2"
               >
                 <option value="">-- Chọn --</option>
@@ -882,33 +955,47 @@ export default function AdminDashboard() {
                 type="number"
                 min="0"
                 value={newClass.capacity}
-                onChange={(e) => setNewClass((v) => ({ ...v, capacity: e.target.value }))}
+                onChange={(e) =>
+                  setNewClass((v) => ({ ...v, capacity: e.target.value }))
+                }
                 className="w-full border rounded-xl px-3 py-2"
               />
             </div>
             <div className="space-y-2">
-              <label className="block text-sm font-semibold">Ảnh minh hoạ</label>
+              <label className="block text-sm font-semibold">
+                Ảnh minh hoạ
+              </label>
               <input
                 value={newClass.image_url}
-                onChange={(e) => setNewClass((v) => ({ ...v, image_url: e.target.value }))}
+                onChange={(e) =>
+                  setNewClass((v) => ({ ...v, image_url: e.target.value }))
+                }
                 className="w-full border rounded-xl px-3 py-2"
               />
             </div>
             <div className="space-y-2">
-              <label className="block text-sm font-semibold">Ngày bắt đầu</label>
+              <label className="block text-sm font-semibold">
+                Ngày bắt đầu
+              </label>
               <input
                 type="date"
                 value={newClass.start_date}
-                onChange={(e) => setNewClass((v) => ({ ...v, start_date: e.target.value }))}
+                onChange={(e) =>
+                  setNewClass((v) => ({ ...v, start_date: e.target.value }))
+                }
                 className="w-full border rounded-xl px-3 py-2"
               />
             </div>
             <div className="space-y-2">
-              <label className="block text-sm font-semibold">Ngày kết thúc</label>
+              <label className="block text-sm font-semibold">
+                Ngày kết thúc
+              </label>
               <input
                 type="date"
                 value={newClass.end_date}
-                onChange={(e) => setNewClass((v) => ({ ...v, end_date: e.target.value }))}
+                onChange={(e) =>
+                  setNewClass((v) => ({ ...v, end_date: e.target.value }))
+                }
                 className="w-full border rounded-xl px-3 py-2"
               />
             </div>
@@ -916,12 +1003,16 @@ export default function AdminDashboard() {
               <label className="block text-sm font-semibold">Mô tả</label>
               <textarea
                 value={newClass.description}
-                onChange={(e) => setNewClass((v) => ({ ...v, description: e.target.value }))}
+                onChange={(e) =>
+                  setNewClass((v) => ({ ...v, description: e.target.value }))
+                }
                 className="w-full border rounded-xl px-3 py-2 min-h-[90px]"
               />
             </div>
             <div className="lg:col-span-2 flex justify-end">
-              <button className="px-4 py-2 rounded-xl bg-black text-white">Tạo lớp học</button>
+              <button className="px-4 py-2 rounded-xl bg-black text-white">
+                Tạo lớp học
+              </button>
             </div>
           </form>
         </div>
@@ -940,14 +1031,20 @@ export default function AdminDashboard() {
                         className="border rounded-xl px-3 py-2"
                         value={editingClass.title}
                         onChange={(e) =>
-                          setEditingClass((v) => ({ ...v, title: e.target.value }))
+                          setEditingClass((v) => ({
+                            ...v,
+                            title: e.target.value,
+                          }))
                         }
                       />
                       <select
                         className="border rounded-xl px-3 py-2"
                         value={editingClass.coach_id}
                         onChange={(e) =>
-                          setEditingClass((v) => ({ ...v, coach_id: e.target.value }))
+                          setEditingClass((v) => ({
+                            ...v,
+                            coach_id: e.target.value,
+                          }))
                         }
                       >
                         <option value="">-- Chọn HLV --</option>
@@ -961,7 +1058,10 @@ export default function AdminDashboard() {
                         className="border rounded-xl px-3 py-2"
                         value={editingClass.location_id}
                         onChange={(e) =>
-                          setEditingClass((v) => ({ ...v, location_id: e.target.value }))
+                          setEditingClass((v) => ({
+                            ...v,
+                            location_id: e.target.value,
+                          }))
                         }
                       >
                         <option value="">-- Chọn địa điểm --</option>
@@ -976,14 +1076,20 @@ export default function AdminDashboard() {
                         type="number"
                         value={editingClass.capacity}
                         onChange={(e) =>
-                          setEditingClass((v) => ({ ...v, capacity: e.target.value }))
+                          setEditingClass((v) => ({
+                            ...v,
+                            capacity: e.target.value,
+                          }))
                         }
                       />
                       <input
                         className="border rounded-xl px-3 py-2"
                         value={editingClass.image_url || ""}
                         onChange={(e) =>
-                          setEditingClass((v) => ({ ...v, image_url: e.target.value }))
+                          setEditingClass((v) => ({
+                            ...v,
+                            image_url: e.target.value,
+                          }))
                         }
                       />
                       <input
@@ -991,7 +1097,10 @@ export default function AdminDashboard() {
                         className="border rounded-xl px-3 py-2"
                         value={editingClass.start_date || ""}
                         onChange={(e) =>
-                          setEditingClass((v) => ({ ...v, start_date: e.target.value }))
+                          setEditingClass((v) => ({
+                            ...v,
+                            start_date: e.target.value,
+                          }))
                         }
                       />
                       <input
@@ -999,14 +1108,20 @@ export default function AdminDashboard() {
                         className="border rounded-xl px-3 py-2"
                         value={editingClass.end_date || ""}
                         onChange={(e) =>
-                          setEditingClass((v) => ({ ...v, end_date: e.target.value }))
+                          setEditingClass((v) => ({
+                            ...v,
+                            end_date: e.target.value,
+                          }))
                         }
                       />
                       <textarea
                         className="md:col-span-2 border rounded-xl px-3 py-2"
                         value={editingClass.description || ""}
                         onChange={(e) =>
-                          setEditingClass((v) => ({ ...v, description: e.target.value }))
+                          setEditingClass((v) => ({
+                            ...v,
+                            description: e.target.value,
+                          }))
                         }
                       />
                       <div className="md:col-span-2 flex justify-end gap-3">
@@ -1032,9 +1147,12 @@ export default function AdminDashboard() {
                   ) : (
                     <div className="flex flex-wrap items-start justify-between gap-4">
                       <div>
-                        <div className="text-lg font-semibold">{clazz.title}</div>
+                        <div className="text-lg font-semibold">
+                          {clazz.title}
+                        </div>
                         <div className="text-sm text-gray-500">
-                          HLV: {clazz.coach_name || "Đang cập nhật"} • Sức chứa: {clazz.class_capacity || "—"}
+                          HLV: {clazz.coach_name || "Đang cập nhật"} • Sức chứa:{" "}
+                          {clazz.class_capacity || "—"}
                         </div>
                         <p className="mt-2 text-sm text-gray-600 leading-relaxed">
                           {clazz.description || "Chưa có mô tả"}
@@ -1104,7 +1222,9 @@ export default function AdminDashboard() {
               type="datetime-local"
               required
               value={newSession.start_time}
-              onChange={(e) => setNewSession((v) => ({ ...v, start_time: e.target.value }))}
+              onChange={(e) =>
+                setNewSession((v) => ({ ...v, start_time: e.target.value }))
+              }
               className="w-full border rounded-xl px-3 py-2"
             />
           </div>
@@ -1114,7 +1234,9 @@ export default function AdminDashboard() {
               type="datetime-local"
               required
               value={newSession.end_time}
-              onChange={(e) => setNewSession((v) => ({ ...v, end_time: e.target.value }))}
+              onChange={(e) =>
+                setNewSession((v) => ({ ...v, end_time: e.target.value }))
+              }
               className="w-full border rounded-xl px-3 py-2"
             />
           </div>
@@ -1123,18 +1245,24 @@ export default function AdminDashboard() {
             <input
               type="number"
               value={newSession.capacity}
-              onChange={(e) => setNewSession((v) => ({ ...v, capacity: e.target.value }))}
+              onChange={(e) =>
+                setNewSession((v) => ({ ...v, capacity: e.target.value }))
+              }
               className="w-full border rounded-xl px-3 py-2"
             />
           </div>
           <div className="md:col-span-3 flex justify-end">
-            <button className="px-4 py-2 rounded-xl bg-black text-white">Tạo buổi học</button>
+            <button className="px-4 py-2 rounded-xl bg-black text-white">
+              Tạo buổi học
+            </button>
           </div>
         </form>
 
         <div className="rounded-2xl border overflow-hidden">
           {sessionsLoading ? (
-            <div className="p-6 text-gray-500">Đang tải danh sách buổi học…</div>
+            <div className="p-6 text-gray-500">
+              Đang tải danh sách buổi học…
+            </div>
           ) : (
             <table className="w-full text-sm">
               <thead className="bg-gray-50">
@@ -1154,7 +1282,10 @@ export default function AdminDashboard() {
                           type="datetime-local"
                           value={editingSession.start_time}
                           onChange={(e) =>
-                            setEditingSession((v) => ({ ...v, start_time: e.target.value }))
+                            setEditingSession((v) => ({
+                              ...v,
+                              start_time: e.target.value,
+                            }))
                           }
                           className="border rounded-xl px-3 py-2"
                         />
@@ -1168,7 +1299,10 @@ export default function AdminDashboard() {
                           type="datetime-local"
                           value={editingSession.end_time}
                           onChange={(e) =>
-                            setEditingSession((v) => ({ ...v, end_time: e.target.value }))
+                            setEditingSession((v) => ({
+                              ...v,
+                              end_time: e.target.value,
+                            }))
                           }
                           className="border rounded-xl px-3 py-2"
                         />
@@ -1182,7 +1316,10 @@ export default function AdminDashboard() {
                           type="number"
                           value={editingSession.capacity}
                           onChange={(e) =>
-                            setEditingSession((v) => ({ ...v, capacity: e.target.value }))
+                            setEditingSession((v) => ({
+                              ...v,
+                              capacity: e.target.value,
+                            }))
                           }
                           className="border rounded-xl px-3 py-2 w-24"
                         />
@@ -1259,11 +1396,15 @@ export default function AdminDashboard() {
             className="grid md:grid-cols-2 gap-4 rounded-2xl border p-6 bg-white"
           >
             <div className="space-y-2">
-              <label className="block text-sm font-semibold">Tên địa điểm</label>
+              <label className="block text-sm font-semibold">
+                Tên địa điểm
+              </label>
               <input
                 required
                 value={newLocation.name}
-                onChange={(e) => setNewLocation((v) => ({ ...v, name: e.target.value }))}
+                onChange={(e) =>
+                  setNewLocation((v) => ({ ...v, name: e.target.value }))
+                }
                 className="w-full border rounded-xl px-3 py-2"
               />
             </div>
@@ -1271,7 +1412,9 @@ export default function AdminDashboard() {
               <label className="block text-sm font-semibold">Địa chỉ</label>
               <input
                 value={newLocation.address}
-                onChange={(e) => setNewLocation((v) => ({ ...v, address: e.target.value }))}
+                onChange={(e) =>
+                  setNewLocation((v) => ({ ...v, address: e.target.value }))
+                }
                 className="w-full border rounded-xl px-3 py-2"
               />
             </div>
@@ -1280,7 +1423,9 @@ export default function AdminDashboard() {
               <input
                 type="number"
                 value={newLocation.capacity}
-                onChange={(e) => setNewLocation((v) => ({ ...v, capacity: e.target.value }))}
+                onChange={(e) =>
+                  setNewLocation((v) => ({ ...v, capacity: e.target.value }))
+                }
                 className="w-full border rounded-xl px-3 py-2"
               />
             </div>
@@ -1288,12 +1433,16 @@ export default function AdminDashboard() {
               <label className="block text-sm font-semibold">Ghi chú</label>
               <textarea
                 value={newLocation.notes}
-                onChange={(e) => setNewLocation((v) => ({ ...v, notes: e.target.value }))}
+                onChange={(e) =>
+                  setNewLocation((v) => ({ ...v, notes: e.target.value }))
+                }
                 className="w-full border rounded-xl px-3 py-2 min-h-[80px]"
               />
             </div>
             <div className="md:col-span-2 flex justify-end">
-              <button className="px-4 py-2 rounded-xl bg-black text-white">Thêm địa điểm</button>
+              <button className="px-4 py-2 rounded-xl bg-black text-white">
+                Thêm địa điểm
+              </button>
             </div>
           </form>
         </div>
@@ -1305,21 +1454,30 @@ export default function AdminDashboard() {
           ) : (
             <div className="space-y-4">
               {locations.map((location) => (
-                <div key={location.id} className="rounded-2xl border p-5 bg-white">
+                <div
+                  key={location.id}
+                  className="rounded-2xl border p-5 bg-white"
+                >
                   {editingLocationId === location.id ? (
                     <div className="grid md:grid-cols-2 gap-4">
                       <input
                         className="border rounded-xl px-3 py-2"
                         value={editingLocation.name}
                         onChange={(e) =>
-                          setEditingLocation((v) => ({ ...v, name: e.target.value }))
+                          setEditingLocation((v) => ({
+                            ...v,
+                            name: e.target.value,
+                          }))
                         }
                       />
                       <input
                         className="border rounded-xl px-3 py-2"
                         value={editingLocation.address || ""}
                         onChange={(e) =>
-                          setEditingLocation((v) => ({ ...v, address: e.target.value }))
+                          setEditingLocation((v) => ({
+                            ...v,
+                            address: e.target.value,
+                          }))
                         }
                       />
                       <input
@@ -1327,14 +1485,20 @@ export default function AdminDashboard() {
                         type="number"
                         value={editingLocation.capacity || ""}
                         onChange={(e) =>
-                          setEditingLocation((v) => ({ ...v, capacity: e.target.value }))
+                          setEditingLocation((v) => ({
+                            ...v,
+                            capacity: e.target.value,
+                          }))
                         }
                       />
                       <textarea
                         className="md:col-span-2 border rounded-xl px-3 py-2"
                         value={editingLocation.notes || ""}
                         onChange={(e) =>
-                          setEditingLocation((v) => ({ ...v, notes: e.target.value }))
+                          setEditingLocation((v) => ({
+                            ...v,
+                            notes: e.target.value,
+                          }))
                         }
                       />
                       <div className="md:col-span-2 flex justify-end gap-3">
@@ -1360,9 +1524,15 @@ export default function AdminDashboard() {
                   ) : (
                     <div className="flex flex-wrap items-start justify-between gap-4">
                       <div>
-                        <div className="text-lg font-semibold">{location.name}</div>
-                        <div className="text-sm text-gray-600">{location.address || "(chưa có địa chỉ)"}</div>
-                        <div className="text-sm text-gray-600">Sức chứa: {location.capacity || "—"}</div>
+                        <div className="text-lg font-semibold">
+                          {location.name}
+                        </div>
+                        <div className="text-sm text-gray-600">
+                          {location.address || "(chưa có địa chỉ)"}
+                        </div>
+                        <div className="text-sm text-gray-600">
+                          Sức chứa: {location.capacity || "—"}
+                        </div>
                         <p className="mt-2 text-sm text-gray-600 leading-relaxed">
                           {location.notes || "Chưa có ghi chú"}
                         </p>
@@ -1420,14 +1590,18 @@ export default function AdminDashboard() {
                   <tr key={en.id} className="border-t">
                     <td className="p-3">
                       <div className="font-semibold">{en.user_name}</div>
-                      <div className="text-xs text-gray-500">{en.user_email}</div>
+                      <div className="text-xs text-gray-500">
+                        {en.user_email}
+                      </div>
                     </td>
                     <td className="p-3">{en.class_title}</td>
                     <td className="p-3">{formatDateTime(en.start_time)}</td>
                     <td className="p-3">
                       <select
                         value={en.status}
-                        onChange={(e) => updateEnrollmentStatus(en.id, e.target.value)}
+                        onChange={(e) =>
+                          updateEnrollmentStatus(en.id, e.target.value)
+                        }
                         className="border rounded-xl px-3 py-1"
                       >
                         <option value="ENROLLED">ENROLLED</option>
@@ -1435,7 +1609,9 @@ export default function AdminDashboard() {
                         <option value="CANCELLED">CANCELLED</option>
                       </select>
                     </td>
-                    <td className="p-3 text-gray-500">{formatDateTime(en.created_at)}</td>
+                    <td className="p-3 text-gray-500">
+                      {formatDateTime(en.created_at)}
+                    </td>
                   </tr>
                 ))}
                 {!enrollments.length && (
@@ -1461,7 +1637,9 @@ export default function AdminDashboard() {
             <label className="block text-sm font-semibold">Thống kê theo</label>
             <select
               value={reportFilters.by}
-              onChange={(e) => setReportFilters((v) => ({ ...v, by: e.target.value }))}
+              onChange={(e) =>
+                setReportFilters((v) => ({ ...v, by: e.target.value }))
+              }
               className="w-full border rounded-xl px-3 py-2"
             >
               <option value="class">Lớp học</option>
@@ -1474,7 +1652,9 @@ export default function AdminDashboard() {
             <input
               type="date"
               value={reportFilters.from}
-              onChange={(e) => setReportFilters((v) => ({ ...v, from: e.target.value }))}
+              onChange={(e) =>
+                setReportFilters((v) => ({ ...v, from: e.target.value }))
+              }
               className="w-full border rounded-xl px-3 py-2"
             />
           </div>
@@ -1483,7 +1663,9 @@ export default function AdminDashboard() {
             <input
               type="date"
               value={reportFilters.to}
-              onChange={(e) => setReportFilters((v) => ({ ...v, to: e.target.value }))}
+              onChange={(e) =>
+                setReportFilters((v) => ({ ...v, to: e.target.value }))
+              }
               className="w-full border rounded-xl px-3 py-2"
             />
           </div>
@@ -1557,8 +1739,8 @@ export default function AdminDashboard() {
         <div>
           <h1 className="text-3xl font-bold">Bảng điều khiển quản trị</h1>
           <p className="mt-2 text-sm text-gray-600">
-            Theo dõi toàn bộ hoạt động của hệ thống lớp học cầu lông: tài khoản, lớp học,
-            buổi học và báo cáo thống kê.
+            Theo dõi toàn bộ hoạt động của hệ thống lớp học cầu lông: tài khoản,
+            lớp học, buổi học và báo cáo thống kê.
           </p>
         </div>
       </div>
