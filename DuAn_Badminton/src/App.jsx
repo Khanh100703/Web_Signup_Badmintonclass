@@ -15,8 +15,6 @@ import ResetPassword from "./pages/ResetPassword.jsx";
 import Coaches from "./pages/Coaches.jsx";
 import Contact from "./pages/Contact.jsx";
 import VerifyRegister from "./pages/VerifyRegister.jsx";
-import CoachClasses from "./pages/CoachClasses.jsx";
-import AdminDashboard from "./pages/AdminDashboard.jsx";
 
 export default function App() {
   return (
@@ -41,22 +39,6 @@ export default function App() {
                 element={
                   <RequireAuth>
                     <MySchedule />
-                  </RequireAuth>
-                }
-              />
-              <Route
-                path="/coach/classes"
-                element={
-                  <RequireAuth roles={["COACH", "ADMIN"]}>
-                    <CoachClasses />
-                  </RequireAuth>
-                }
-              />
-              <Route
-                path="/admin"
-                element={
-                  <RequireAuth roles={["ADMIN"]}>
-                    <AdminDashboard />
                   </RequireAuth>
                 }
               />

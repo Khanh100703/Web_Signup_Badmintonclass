@@ -89,6 +89,8 @@ export default function Navbar() {
               Lịch học của tôi
             </NavLink>
           )}
+<<<<<<< HEAD
+=======
           {user?.role === "COACH" && (
             <NavLink
               to="/coach/classes"
@@ -113,6 +115,7 @@ export default function Navbar() {
               Quản trị
             </NavLink>
           )}
+>>>>>>> codex/add-features-and-fix-existing-bugs
         </nav>
 
         {/* User actions */}
