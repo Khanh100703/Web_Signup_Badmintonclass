@@ -54,9 +54,12 @@ export default function ClassDetail() {
           if (c?.coach) {
             if (mounted) setCoach(c.coach);
           } else if (c?.coach_id) {
-            // 🚩 ĐẢM BẢO đúng route backend: /api/coaches/:id hay /api/coach/:id ?
+            // ĐẢM BẢO đúng route backend: /api/coaches/:id hay /api/coach/:id ?
             const coachRes = await api.get(`/api/coaches/${c.coach_id}`);
-            if (mounted) setCoach(coachRes?.data || coachRes || null);
+            const data = Array.isArray(coachRes.data)
+              ? coachRes.data[0]
+              : coachRes.data;
+            if (mounted) setCoach(data);
           }
           // eslint-disable-next-line no-unused-vars
         } catch (e) {
@@ -130,7 +133,7 @@ export default function ClassDetail() {
       <div className="lg:col-span-2 -mt-6 mb-0">
         <Link
           to="/classes"
-          className="inline-flex items-center gap-2 text-sm px-3 py-2 rounded-xl border hover:shadow"
+          className="inline-flex items-center gap-2 text-sm px-3 py-2 rounded-xl border hover:shadow hover:scale-[1.02] transition"
         >
           ← Quay lại danh sách khóa học
         </Link>
@@ -139,7 +142,7 @@ export default function ClassDetail() {
       <div className="lg:col-span-2">
         <div className="rounded-2xl border p-6">
           {clazz.image_url && (
-            <div className="mb-6 rounded-2xl overflow-hidden bg-gray-100 aspect-video">
+            <div className="mb-6 rounded-2xl overflow-hidden bg-gray-100 aspect-video animate-fadeIn">
               <img
                 src={clazz.image_url}
                 alt={clazz.title}
@@ -179,7 +182,9 @@ export default function ClassDetail() {
                     ? new Date(clazz.start_date).toLocaleDateString("vi-VN")
                     : "Chưa xác định"}
                   {clazz.end_date
-                    ? ` - ${new Date(clazz.end_date).toLocaleDateString("vi-VN")}`
+                    ? ` - ${new Date(clazz.end_date).toLocaleDateString(
+                        "vi-VN"
+                      )}`
                     : ""}
                 </div>
               </div>
@@ -224,7 +229,7 @@ export default function ClassDetail() {
                     <td className="p-3">
                       <button
                         onClick={() => enroll(s.id)}
-                        className="px-3 py-2 rounded-xl border hover:shadow disabled:opacity-60"
+                        className="px-3 py-2 rounded-xl border hover:shadow hover:scale-[1.02] transition disabled:opacity-60"
                         disabled={disabled}
                       >
                         {myEnrolled.has(s.id)
@@ -249,33 +254,38 @@ export default function ClassDetail() {
         </div>
       </div>
 
-      {/* RIGHT: COACH */}
+      {/* HLV */}
       <aside className="lg:col-span-1">
         <div className="rounded-2xl border p-6">
           <div className="text-lg font-semibold mb-4">Huấn luyện viên</div>
-          {coach || clazz?.coach ? (
-            <div className="flex gap-4">
-              <div className="w-20 h-20 rounded-xl bg-gray-100" />
-              <div>
-                <div className="font-semibold">
-                  {(coach || clazz.coach).name}
+          {coach ? (
+            <div className="flex gap-4 items-center">
+              {coach.photo_url ? (
+                <img
+                  src={coach.photo_url}
+                  alt={coach.name || "Coach"}
+                  className="w-20 h-20 rounded-full object-cover border"
+                  loading="lazy"
+                />
+              ) : (
+                <div className="w-20 h-20 rounded-full bg-gray-200 flex items-center justify-center text-gray-400 text-xs">
+                  No Image
                 </div>
-                {(coach || clazz.coach).email && (
-                  <div className="text-sm text-gray-600">
-                    {(coach || clazz.coach).email}
-                  </div>
+              )}
+              <div className="flex-1">
+                <div className="font-semibold">{coach.name}</div>
+                {coach.email && (
+                  <div className="text-sm text-gray-600">{coach.email}</div>
                 )}
-                {(coach || clazz.coach).phone && (
-                  <div className="text-sm text-gray-600">
-                    ☎ {(coach || clazz.coach).phone}
-                  </div>
+                {coach.phone && (
+                  <div className="text-sm text-gray-600">☎ {coach.phone}</div>
                 )}
-                <a
-                  href="/coaches"
+                <Link
+                  to="/coaches"
                   className="text-sm underline mt-2 inline-block"
                 >
                   Xem tất cả HLV
-                </a>
+                </Link>
               </div>
             </div>
           ) : (

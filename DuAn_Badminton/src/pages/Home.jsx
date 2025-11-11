@@ -178,7 +178,7 @@ export default function Home() {
                 <img
                   src={featured[slide].image_url}
                   alt={featured[slide]?.title || "Khóa học cầu lông"}
-                  className="h-full w-full object-cover"
+                  className="h-full w-full object-cover animate-fadeIn"
                   loading="lazy"
                 />
               ) : (
@@ -217,10 +217,10 @@ export default function Home() {
           <div>
             <h2 className="text-3xl font-bold">Giới thiệu trung tâm</h2>
             <p className="mt-4 text-gray-600 leading-relaxed">
-              Học Cầu Lông được thành lập với mục tiêu mang đến môi trường tập luyện
-              chuyên nghiệp, hiện đại và thân thiện cho mọi đối tượng học viên. Từ
-              người mới làm quen đến vận động viên thi đấu, chúng tôi xây dựng giáo
-              trình cá nhân hóa giúp bạn tiến bộ từng buổi học.
+              Học Cầu Lông được thành lập với mục tiêu mang đến môi trường tập
+              luyện chuyên nghiệp, hiện đại và thân thiện cho mọi đối tượng học
+              viên. Từ người mới làm quen đến vận động viên thi đấu, chúng tôi
+              xây dựng giáo trình cá nhân hóa giúp bạn tiến bộ từng buổi học.
             </p>
             <ul className="mt-6 space-y-2 text-gray-700">
               <li>• Cam kết cải thiện kỹ thuật chỉ sau 4 buổi tập.</li>
@@ -251,8 +251,9 @@ export default function Home() {
             <div>
               <h2 className="text-3xl font-bold">Lịch học & Học phí</h2>
               <p className="mt-3 text-gray-600">
-                Lịch tập linh hoạt theo khung giờ cố định. Học viên có thể đăng ký thử
-                buổi đầu để được đánh giá trình độ và tư vấn lộ trình phù hợp.
+                Lịch tập linh hoạt theo khung giờ cố định. Học viên có thể đăng
+                ký thử buổi đầu để được đánh giá trình độ và tư vấn lộ trình phù
+                hợp.
               </p>
             </div>
           </div>
@@ -272,15 +273,17 @@ export default function Home() {
                     <td className="p-3 font-medium">{row.level}</td>
                     <td className="p-3 text-gray-600">{row.times}</td>
                     <td className="p-3 text-gray-600">{row.location}</td>
-                    <td className="p-3 font-semibold text-blue-600">{row.tuition}</td>
+                    <td className="p-3 font-semibold text-blue-600">
+                      {row.tuition}
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
           <p className="mt-4 text-xs text-gray-500">
-            * Học phí đã bao gồm sân bãi, dụng cụ cơ bản và nước uống. Học viên đăng ký
-            theo nhóm được giảm thêm 10%.
+            * Học phí đã bao gồm sân bãi, dụng cụ cơ bản và nước uống. Học viên
+            đăng ký theo nhóm được giảm thêm 10%.
           </p>
         </div>
       </section>
@@ -292,7 +295,10 @@ export default function Home() {
           </h2>
           <div className="mt-10 grid md:grid-cols-2 gap-6">
             {highlightPoints.map((item) => (
-              <div key={item.title} className="rounded-2xl border p-6 bg-white/70">
+              <div
+                key={item.title}
+                className="rounded-2xl border p-6 bg-white/70"
+              >
                 <h3 className="text-xl font-semibold">{item.title}</h3>
                 <p className="mt-3 text-gray-600 leading-relaxed">
                   {item.description}
@@ -309,11 +315,14 @@ export default function Home() {
             <div>
               <h2 className="text-3xl font-bold">Khóa học nổi bật</h2>
               <p className="mt-2 text-gray-600">
-                Lựa chọn phù hợp với mục tiêu luyện tập của bạn – từ kỹ thuật cơ bản đến
-                chiến thuật thi đấu nâng cao.
+                Lựa chọn phù hợp với mục tiêu luyện tập của bạn – từ kỹ thuật cơ
+                bản đến chiến thuật thi đấu nâng cao.
               </p>
             </div>
-            <Link to="/classes" className="px-4 py-2 rounded-xl border bg-white hover:bg-gray-100 text-sm">
+            <Link
+              to="/classes"
+              className="px-4 py-2 rounded-xl border bg-white hover:bg-gray-100 text-sm"
+            >
               Xem tất cả
             </Link>
           </div>
@@ -329,7 +338,7 @@ export default function Home() {
                     <img
                       src={item.image_url}
                       alt={item.title}
-                      className="h-full w-full object-cover"
+                      className="h-full w-full object-cover animate-fadeIn"
                       loading="lazy"
                     />
                   ) : (
@@ -341,7 +350,8 @@ export default function Home() {
                 <div className="p-5 flex-1 flex flex-col">
                   <div className="text-lg font-semibold">{item.title}</div>
                   <p className="mt-2 text-sm text-gray-600 leading-relaxed">
-                    {item.description || "Khóa học cầu lông phù hợp cho mọi trình độ."}
+                    {item.description ||
+                      "Khóa học cầu lông phù hợp cho mọi trình độ."}
                   </p>
                   <div className="mt-auto pt-4 text-sm text-gray-500">
                     {item.location_name || "Địa điểm linh hoạt"}
@@ -355,17 +365,25 @@ export default function Home() {
 
       <section className="py-16">
         <div className="max-w-4xl mx-auto px-4 text-center">
-          <h2 className="text-3xl font-bold">Sẵn sàng để bắt đầu hành trình của bạn?</h2>
+          <h2 className="text-3xl font-bold">
+            Sẵn sàng để bắt đầu hành trình của bạn?
+          </h2>
           <p className="mt-4 text-gray-600 leading-relaxed">
-            Đăng ký ngay hôm nay để được tư vấn lộ trình miễn phí và tham gia buổi học
-            thử đầu tiên. Đừng bỏ lỡ cơ hội nâng cao thể lực, cải thiện kỹ thuật và kết
-            nối với cộng đồng những người yêu cầu lông.
+            Đăng ký ngay hôm nay để được tư vấn lộ trình miễn phí và tham gia
+            buổi học thử đầu tiên. Đừng bỏ lỡ cơ hội nâng cao thể lực, cải thiện
+            kỹ thuật và kết nối với cộng đồng những người yêu cầu lông.
           </p>
           <div className="mt-6 flex flex-wrap justify-center gap-4">
-            <Link to="/classes" className="px-5 py-3 rounded-2xl bg-black text-white">
-              Đăng ký lớp học
+            <Link
+              to="/classes"
+              className="px-5 py-3 rounded-2xl bg-black text-white hover:opacity-90 hover:scale-[1.02] transition"
+            >
+              Đăng ký ngay
             </Link>
-            <Link to="/contact" className="px-5 py-3 rounded-2xl border">
+            <Link
+              to="/contact"
+              className="px-5 py-3 rounded-2xl border hover:shadow hover:scale-[1.02] transition"
+            >
               Tư vấn miễn phí
             </Link>
           </div>

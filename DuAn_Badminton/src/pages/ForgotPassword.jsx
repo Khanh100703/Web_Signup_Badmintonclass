@@ -26,7 +26,7 @@ export default function ForgotPassword() {
       <h1 className="text-3xl font-bold mb-6">Quên mật khẩu</h1>
       <form onSubmit={onSubmit} className="grid gap-4">
         <input
-          className="border rounded-xl px-4 py-3"
+          className="border rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-black/50"
           placeholder="Email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
@@ -34,7 +34,7 @@ export default function ForgotPassword() {
         />
         {err && <div className="text-red-600 text-sm">{err}</div>}
         {msg && <div className="text-emerald-600 text-sm">{msg}</div>}
-        <button className="px-4 py-3 rounded-2xl bg-black text-white">
+        <button className="px-4 py-3 rounded-2xl bg-black text-white hover:opacity-90 hover:scale-[1.02] transition-all">
           Gửi hướng dẫn
         </button>
       </form>

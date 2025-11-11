@@ -36,26 +36,26 @@ export default function Contact() {
       <h1 className="text-2xl font-bold mb-6">Liên hệ</h1>
       <form onSubmit={onSubmit} className="space-y-4">
         <input
-          className="w-full border rounded-2xl px-4 py-3"
+          className="w-full border rounded-2xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-black/50"
           placeholder="Họ và tên"
           value={name}
           onChange={(e) => setName(e.target.value)}
         />
         <input
-          className="w-full border rounded-2xl px-4 py-3"
+          className="w-full border rounded-2xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-black/50"
           placeholder="Email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           type="email"
         />
         <input
-          className="w-full border rounded-2xl px-4 py-3"
+          className="w-full border rounded-2xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-black/50"
           placeholder="Tiêu đề"
           value={subject}
           onChange={(e) => setSubject(e.target.value)}
         />
         <textarea
-          className="w-full border rounded-2xl px-4 py-3"
+          className="w-full border rounded-2xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-black/50"
           placeholder="Nội dung"
           value={message}
           onChange={(e) => setMessage(e.target.value)}
@@ -63,7 +63,7 @@ export default function Contact() {
         />
         {err && <div className="text-red-600 text-sm">{err}</div>}
         {ok && <div className="text-emerald-600 text-sm">{ok}</div>}
-        <button className="px-4 py-3 rounded-2xl bg-black text-white">
+        <button className="px-4 py-3 rounded-2xl bg-black text-white hover:opacity-90 hover:scale-[1.02] transition-all">
           Gửi
         </button>
       </form>

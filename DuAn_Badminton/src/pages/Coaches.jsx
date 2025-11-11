@@ -109,7 +109,7 @@ export default function Coaches() {
           return (
             <section
               key={c.id ?? idx}
-              className="grid lg:grid-cols-2 gap-8 items-start"
+              className="grid lg:grid-cols-2 gap-8 items-start hover:scale-[1.005] transition"
             >
               {/* Ảnh */}
               <div
@@ -120,7 +120,7 @@ export default function Coaches() {
                 <img
                   src={src}
                   alt={c.name}
-                  className="block w-full h-64 md:h-80 object-cover"
+                  className="block w-full h-64 md:h-80 object-cover animate-fadeIn"
                   loading="lazy"
                   crossOrigin="anonymous"
                   referrerPolicy="no-referrer"
@@ -136,7 +136,7 @@ export default function Coaches() {
               <div
                 className={`order-2 ${isEven ? "lg:order-1" : "lg:order-2"}`}
               >
-                <h2 className="text-2xl md:text-3xl font-extrabold text-black mb-4 uppercase">
+                <h2 className="text-2xl md:text-3xl font-extrabold text-black mb-4 uppercase link-underline">
                   {String(c.name || "").toUpperCase()}
                 </h2>
 

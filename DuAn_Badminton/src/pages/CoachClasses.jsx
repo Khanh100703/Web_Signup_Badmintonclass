@@ -91,7 +91,7 @@ export default function CoachClasses() {
               : "Danh sách lớp học mà bạn đang phụ trách."}
           </p>
         </div>
-        <div className="rounded-2xl border px-6 py-3 text-sm">
+        <div className="rounded-2xl border bg-white shadow-sm hover:shadow-md transition">
           Tổng cộng <b>{classCount}</b> lớp học
         </div>
       </div>
@@ -112,7 +112,7 @@ export default function CoachClasses() {
                     <img
                       src={clazz.image_url}
                       alt={clazz.title}
-                      className="h-full w-full object-cover"
+                      className="h-full w-full object-cover animate-fadeIn"
                       loading="lazy"
                     />
                   ) : (
@@ -123,17 +123,23 @@ export default function CoachClasses() {
                 </div>
                 <div className="mt-4 text-sm text-gray-500 space-y-1">
                   <div>
-                    <span className="font-semibold text-gray-700">Địa điểm:</span>{" "}
+                    <span className="font-semibold text-gray-700">
+                      Địa điểm:
+                    </span>{" "}
                     {clazz.location_name || "Đang cập nhật"}
                   </div>
                   {clazz.level_name && (
                     <div>
-                      <span className="font-semibold text-gray-700">Trình độ:</span>{" "}
+                      <span className="font-semibold text-gray-700">
+                        Trình độ:
+                      </span>{" "}
                       {clazz.level_name}
                     </div>
                   )}
                   <div>
-                    <span className="font-semibold text-gray-700">Sức chứa:</span>{" "}
+                    <span className="font-semibold text-gray-700">
+                      Sức chứa:
+                    </span>{" "}
                     {clazz.class_capacity || "—"}
                   </div>
                 </div>
@@ -143,7 +149,8 @@ export default function CoachClasses() {
                   <div>
                     <h2 className="text-2xl font-semibold">{clazz.title}</h2>
                     <p className="mt-2 text-sm text-gray-600 leading-relaxed whitespace-pre-line">
-                      {clazz.description || "Khóa học cầu lông đang chờ bạn cập nhật mô tả chi tiết."}
+                      {clazz.description ||
+                        "Khóa học cầu lông đang chờ bạn cập nhật mô tả chi tiết."}
                     </p>
                   </div>
                   <span className="px-3 py-1 rounded-full bg-blue-50 text-blue-600 text-xs font-semibold">
@@ -164,16 +171,24 @@ export default function CoachClasses() {
                     <tbody>
                       {(clazz.sessions || []).map((session) => (
                         <tr key={session.id} className="border-t">
-                          <td className="p-3">{formatDateTime(session.start_time)}</td>
-                          <td className="p-3">{formatDateTime(session.end_time)}</td>
-                          <td className="p-3">{session.capacity ?? clazz.class_capacity ?? "—"}</td>
+                          <td className="p-3">
+                            {formatDateTime(session.start_time)}
+                          </td>
+                          <td className="p-3">
+                            {formatDateTime(session.end_time)}
+                          </td>
+                          <td className="p-3">
+                            {session.capacity ?? clazz.class_capacity ?? "—"}
+                          </td>
                           <td className="p-3">
                             <button
                               onClick={() => sendReminder(session.id)}
-                              className="px-3 py-2 rounded-xl border hover:bg-gray-50 disabled:opacity-60"
+                              className="px-3 py-2 rounded-xl border hover:shadow hover:scale-[1.02] transition"
                               disabled={sendingSession === session.id}
                             >
-                              {sendingSession === session.id ? "Đang gửi…" : "Gửi email nhắc"}
+                              {sendingSession === session.id
+                                ? "Đang gửi…"
+                                : "Gửi email nhắc"}
                             </button>
                           </td>
                         </tr>

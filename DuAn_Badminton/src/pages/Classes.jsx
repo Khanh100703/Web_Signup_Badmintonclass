@@ -28,18 +28,18 @@ export default function Classes() {
           <Link
             to={`/classes/${c.id}`}
             key={c.id}
-            className="rounded-2xl border bg-white overflow-hidden hover:shadow-lg transition flex flex-col"
+            className="rounded-2xl border bg-white overflow-hidden hover:shadow-lg hover:scale-[1.01] transition flex flex-col"
           >
-            <div className="aspect-video bg-gray-100">
+            <div className="w-full h-56 bg-gray-100 overflow-hidden flex items-center justify-center">
               {c.image_url ? (
                 <img
                   src={c.image_url}
                   alt={c.title}
-                  className="h-full w-full object-cover"
+                  className="w-full h-full object-cover animate-fadeIn"
                   loading="lazy"
                 />
               ) : (
-                <div className="h-full w-full grid place-items-center text-gray-400 text-sm">
+                <div className="text-gray-400 text-sm">
                   Hình ảnh đang cập nhật
                 </div>
               )}
@@ -47,7 +47,8 @@ export default function Classes() {
             <div className="p-5 flex-1 flex flex-col">
               <div className="font-semibold text-lg">{c.title}</div>
               <p className="mt-2 text-sm text-gray-600 leading-relaxed flex-1">
-                {c.description || "Khóa học cầu lông phù hợp với nhiều trình độ khác nhau."}
+                {c.description ||
+                  "Khóa học cầu lông phù hợp với nhiều trình độ khác nhau."}
               </p>
               <div className="mt-4 text-xs text-gray-500 flex flex-col gap-1">
                 <span>
