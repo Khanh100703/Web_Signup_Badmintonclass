@@ -3,8 +3,42 @@ import { pool } from "../db.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { validationResult } from "express-validator";
-import { sendMail } from "../utils/mailer.js";
+import nodemailer from "nodemailer";
 import crypto from "crypto";
+
+/* ===========================
+   Helpers: Mail + OTP + Misc
+   =========================== */
+function buildTransporter() {
+  if (!process.env.SMTP_HOST) return null;
+  return nodemailer.createTransport({
+    host: process.env.SMTP_HOST,
+    port: Number(process.env.SMTP_PORT || 587),
+    secure: String(process.env.SMTP_SECURE || "false") === "true",
+    auth: process.env.SMTP_USER
+      ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
+      : undefined,
+  });
+}
+
+async function sendMail(to, subject, html) {
+  try {
+    const t = buildTransporter();
+    if (!t) {
+      console.log("[DEV MAIL - no SMTP config]", { to, subject });
+      console.log("[DEV MAIL - body]\n", html);
+      return { dev: true };
+    }
+    const from =
+      process.env.SMTP_FROM || process.env.SMTP_USER || "no-reply@example.com";
+    await t.sendMail({ from, to, subject, html });
+    return { dev: false };
+  } catch (err) {
+    console.error("[MAIL ERROR -> DEV MODE]", err?.message || err);
+    console.log("[DEV MAIL - fallback]", { to, subject });
+    return { dev: true };
+  }
+}
 
 function makeOtp6() {
   return Math.floor(100000 + Math.random() * 900000).toString();

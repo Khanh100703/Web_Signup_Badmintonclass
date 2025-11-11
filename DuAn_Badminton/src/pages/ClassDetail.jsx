@@ -141,6 +141,8 @@ export default function ClassDetail() {
       {/* LEFT */}
       <div className="lg:col-span-2">
         <div className="rounded-2xl border p-6">
+<<<<<<< HEAD
+=======
           {clazz.image_url && (
             <div className="mb-6 rounded-2xl overflow-hidden bg-gray-100 aspect-video animate-fadeIn">
               <img
@@ -151,6 +153,7 @@ export default function ClassDetail() {
               />
             </div>
           )}
+>>>>>>> codex/add-features-and-fix-existing-bugs
           <h1 className="text-3xl font-bold">{clazz.title || "Khóa học"}</h1>
           {level && (
             <div className="mt-2 inline-block text-xs px-2 py-1 rounded-full bg-gray-100">
@@ -174,6 +177,8 @@ export default function ClassDetail() {
                 <div className="font-semibold">{price}</div>
               </div>
             )}
+<<<<<<< HEAD
+=======
             {(clazz.start_date || clazz.end_date) && (
               <div className="rounded-xl border p-4">
                 <div className="text-gray-500">Thời gian khóa</div>
@@ -189,6 +194,7 @@ export default function ClassDetail() {
                 </div>
               </div>
             )}
+>>>>>>> codex/add-features-and-fix-existing-bugs
             {location && (
               <div className="rounded-xl border p-4 sm:col-span-2">
                 <div className="text-gray-500">Địa điểm</div>

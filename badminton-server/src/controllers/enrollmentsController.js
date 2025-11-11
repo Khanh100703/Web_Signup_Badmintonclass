@@ -1,22 +1,8 @@
 import { pool } from "../db.js";
 import { validationResult } from "express-validator";
-import { sendMail } from "../utils/mailer.js";
 
 // Mặc định không cho đăng ký hoặc huỷ khi còn dưới 2 giờ trước giờ bắt đầu
 const MIN_HOURS_BEFORE = 2;
-
-function formatDateTime(value) {
-  if (!value) return "Chưa cập nhật";
-  try {
-    return new Intl.DateTimeFormat("vi-VN", {
-      dateStyle: "full",
-      timeStyle: "short",
-      timeZone: "Asia/Ho_Chi_Minh",
-    }).format(new Date(value));
-  } catch {
-    return new Date(value).toLocaleString();
-  }
-}
 
 export async function enroll(req, res) {
   const errors = validationResult(req);
@@ -101,56 +87,9 @@ export async function enroll(req, res) {
       [session_id, userId]
     );
 
-    let emailResult = null;
-    try {
-      const [[info]] = await pool.query(
-        `SELECT u.email, u.name,
-                c.title AS class_title,
-                s.start_time, s.end_time,
-                l.name AS location_name,
-                l.address AS location_address
-         FROM users u
-         JOIN enrollments e ON e.user_id = u.id
-         JOIN sessions s ON s.id = e.session_id
-         JOIN classes c ON c.id = s.class_id
-         LEFT JOIN locations l ON l.id = c.location_id
-         WHERE e.user_id = ? AND e.session_id = ?
-         ORDER BY e.id DESC
-         LIMIT 1`,
-        [userId, session_id]
-      );
-
-      if (info?.email) {
-        const startText = formatDateTime(info.start_time);
-        const endText = formatDateTime(info.end_time);
-        const locationText = info.location_name
-          ? `${info.location_name}${info.location_address ? ` – ${info.location_address}` : ""}`
-          : "Sẽ cập nhật sau";
-        const html = `
-          <p>Xin chào ${info.name || "học viên"},</p>
-          <p>Bạn đã đăng ký thành công buổi học <b>${info.class_title}</b>.</p>
-          <p><b>Thời gian bắt đầu:</b> ${startText}</p>
-          <p><b>Thời gian kết thúc:</b> ${endText}</p>
-          <p><b>Địa điểm:</b> ${locationText}</p>
-          <p>Vui lòng có mặt trước giờ học 10 phút để chuẩn bị. Nếu có thắc mắc, hãy liên hệ với HLV phụ trách.</p>
-          <p>Hẹn gặp bạn trên sân!</p>
-        `;
-        emailResult = await sendMail(
-          info.email,
-          `Xác nhận đăng ký buổi học - ${info.class_title}`,
-          html
-        );
-      }
-    } catch (mailErr) {
-      console.error("[enroll] sendMail error:", mailErr?.message || mailErr);
-    }
-
-    return res.status(201).json({
-      ok: true,
-      enrolled: true,
-      message: "Đăng ký thành công!",
-      email_sent: emailResult ? !emailResult.dev : false,
-    });
+    return res
+      .status(201)
+      .json({ ok: true, enrolled: true, message: "Đăng ký thành công!" });
   } catch (e) {
     console.error("enroll error:", e);
     return res.status(500).json({ ok: false, message: "Server error" });
@@ -250,58 +189,6 @@ export async function myByClass(req, res) {
     return res.json({ ok: true, session_ids: rows.map((r) => r.session_id) });
   } catch (e) {
     console.error("myByClass error:", e);
-    return res.status(500).json({ ok: false, message: "Server error" });
-  }
-}
-
-export async function listAll(req, res) {
-  try {
-    const [rows] = await pool.query(
-      `SELECT
-         e.id,
-         e.status,
-         e.created_at,
-         s.id AS session_id,
-         s.start_time,
-         s.end_time,
-         c.id AS class_id,
-         c.title AS class_title,
-         u.id AS user_id,
-         u.name AS user_name,
-         u.email AS user_email
-       FROM enrollments e
-       JOIN sessions s ON s.id = e.session_id
-       JOIN classes c ON c.id = s.class_id
-       JOIN users u ON u.id = e.user_id
-       ORDER BY e.created_at DESC`
-    );
-    return res.json({ ok: true, data: rows });
-  } catch (error) {
-    console.error("listAll enrollments error:", error);
-    return res.status(500).json({ ok: false, message: "Server error" });
-  }
-}
-
-export async function updateStatus(req, res) {
-  const id = Number(req.params.id);
-  const { status } = req.body || {};
-  if (!id)
-    return res.status(400).json({ ok: false, message: "Invalid enrollment id" });
-
-  const allowed = new Set(["ENROLLED", "CANCELLED", "WAITLIST"]);
-  if (!allowed.has(status))
-    return res.status(400).json({ ok: false, message: "Invalid status" });
-
-  try {
-    const [result] = await pool.query(
-      "UPDATE enrollments SET status=? WHERE id=?",
-      [status, id]
-    );
-    if (!result.affectedRows)
-      return res.status(404).json({ ok: false, message: "Not found" });
-    return res.json({ ok: true });
-  } catch (error) {
-    console.error("updateStatus enrollment error:", error);
     return res.status(500).json({ ok: false, message: "Server error" });
   }
 }
