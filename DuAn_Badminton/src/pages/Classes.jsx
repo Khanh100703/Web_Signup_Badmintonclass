@@ -29,6 +29,7 @@ export default function Classes() {
             to={`/classes/${c.id}`}
             key={c.id}
 <<<<<<< HEAD
+<<<<<<< HEAD
             className="rounded-2xl border p-5 hover:shadow"
           >
             <div className="h-36 rounded-xl bg-gray-100 mb-3" />
@@ -38,6 +39,10 @@ export default function Classes() {
 =======
             className="rounded-2xl border bg-white overflow-hidden hover:shadow-lg hover:scale-[1.01] transition flex flex-col"
           >
+=======
+            className="rounded-2xl border bg-white overflow-hidden hover:shadow-lg hover:scale-[1.01] transition flex flex-col"
+          >
+>>>>>>> codex/add-features-and-fix-existing-bugs
             <div className="w-full h-56 bg-gray-100 overflow-hidden flex items-center justify-center">
               {c.image_url ? (
                 <img
