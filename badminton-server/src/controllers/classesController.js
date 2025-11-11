@@ -34,6 +34,7 @@ export async function getClassDetail(req, res) {
           co.name    AS coach_name,
           co.email   AS coach_email,
           co.phone   AS coach_phone,
+          co.photo_url AS coach_photo_url,
           l.id       AS location_id,
           l.name     AS location_name,
           l.address  AS location_address,
@@ -74,6 +75,7 @@ export async function getClassDetail(req, res) {
             name: c.coach_name,
             email: c.coach_email,
             phone: c.coach_phone,
+            photo_url: c.coach_photo_url,
           }
         : null,
       location: c.location_id
