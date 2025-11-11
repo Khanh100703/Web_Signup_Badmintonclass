@@ -138,6 +138,16 @@ export default function ClassDetail() {
       {/* LEFT */}
       <div className="lg:col-span-2">
         <div className="rounded-2xl border p-6">
+          {clazz.image_url && (
+            <div className="mb-6 rounded-2xl overflow-hidden bg-gray-100 aspect-video">
+              <img
+                src={clazz.image_url}
+                alt={clazz.title}
+                className="h-full w-full object-cover"
+                loading="lazy"
+              />
+            </div>
+          )}
           <h1 className="text-3xl font-bold">{clazz.title || "Khóa học"}</h1>
           {level && (
             <div className="mt-2 inline-block text-xs px-2 py-1 rounded-full bg-gray-100">
@@ -159,6 +169,19 @@ export default function ClassDetail() {
               <div className="rounded-xl border p-4">
                 <div className="text-gray-500">Học phí</div>
                 <div className="font-semibold">{price}</div>
+              </div>
+            )}
+            {(clazz.start_date || clazz.end_date) && (
+              <div className="rounded-xl border p-4">
+                <div className="text-gray-500">Thời gian khóa</div>
+                <div className="font-semibold">
+                  {clazz.start_date
+                    ? new Date(clazz.start_date).toLocaleDateString("vi-VN")
+                    : "Chưa xác định"}
+                  {clazz.end_date
+                    ? ` - ${new Date(clazz.end_date).toLocaleDateString("vi-VN")}`
+                    : ""}
+                </div>
               </div>
             )}
             {location && (

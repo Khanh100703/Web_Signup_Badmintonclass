@@ -65,6 +65,9 @@ export async function getClassDetail(req, res) {
       location_id: c.location_id || null, // 👈 thêm id để frontend fallback call location
       level_id: c.level_id || null,
       category_id: c.category_id || null,
+      image_url: c.image_url || null,
+      start_date: c.start_date || null,
+      end_date: c.end_date || null,
       coach: c.coach_id
         ? {
             id: c.coach_id,
@@ -128,6 +131,7 @@ export async function updateClass(req, res) {
       "location_id",
       "level_id",
       "category_id",
+      "image_url",
       "start_date",
       "end_date",
       "price",

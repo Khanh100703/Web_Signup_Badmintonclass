@@ -1,32 +1,7 @@
 // src/controllers/contactsController.js
 import { validationResult } from "express-validator";
 import { pool } from "../db.js";
-import nodemailer from "nodemailer";
-
-function transporter() {
-  if (!process.env.SMTP_HOST) return null;
-  return nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: Number(process.env.SMTP_PORT || 587),
-    secure: String(process.env.SMTP_SECURE || "false") === "true",
-    auth: process.env.SMTP_USER
-      ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
-      : undefined,
-  });
-}
-async function sendMail(to, subject, html) {
-  const t = transporter();
-  if (!t) {
-    console.log("[DEV] Mail disabled. Would send to:", to, subject);
-    return;
-  }
-  await t.sendMail({
-    from: process.env.SMTP_FROM || "no-reply@example.com",
-    to,
-    subject,
-    html,
-  });
-}
+import { sendMail } from "../utils/mailer.js";
 
 // POST /api/contacts  (public)
 export async function submitContact(req, res) {

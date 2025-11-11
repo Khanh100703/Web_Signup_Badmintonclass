@@ -4,6 +4,7 @@ import {
   createSession,
   updateSession,
   deleteSession,
+  notifyParticipants,
 } from "../controllers/sessionsController.js";
 import { requireAuth, requireRole } from "../middlewares/auth.js";
 import { body } from "express-validator";
@@ -20,6 +21,13 @@ router.post(
   body("start_time").notEmpty(),
   body("end_time").notEmpty(),
   createSession
+);
+
+router.post(
+  "/:id/notify",
+  requireAuth,
+  requireRole(["ADMIN", "COACH"]),
+  notifyParticipants
 );
 
 router.put("/:id", requireAuth, requireRole(["ADMIN"]), updateSession);

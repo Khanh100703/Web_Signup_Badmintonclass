@@ -1,4 +1,19 @@
 import * as sessionsModel from "../models/sessionsModel.js";
+import { pool } from "../db.js";
+import { sendMail } from "../utils/mailer.js";
+
+function formatDateTime(value) {
+  if (!value) return "Chưa cập nhật";
+  try {
+    return new Intl.DateTimeFormat("vi-VN", {
+      dateStyle: "full",
+      timeStyle: "short",
+      timeZone: "Asia/Ho_Chi_Minh",
+    }).format(new Date(value));
+  } catch {
+    return new Date(value).toLocaleString();
+  }
+}
 
 /**
  * GET /api/sessions/class/:classId
@@ -112,6 +127,95 @@ export async function deleteSession(req, res) {
     }
 
     console.error("deleteSession error:", err);
+    return res.status(500).json({ ok: false, message: "Server error" });
+  }
+}
+
+export async function notifyParticipants(req, res) {
+  try {
+    const id = Number(req.params.id);
+    if (!id)
+      return res.status(400).json({ ok: false, message: "id is required" });
+
+    const [[sessionRow]] = await pool.query(
+      `SELECT s.id, s.start_time, s.end_time, s.class_id,
+              c.title AS class_title,
+              c.coach_id,
+              co.email AS coach_email,
+              co.name AS coach_name,
+              l.name AS location_name,
+              l.address AS location_address
+       FROM sessions s
+       JOIN classes c ON c.id = s.class_id
+       LEFT JOIN coaches co ON co.id = c.coach_id
+       LEFT JOIN locations l ON l.id = c.location_id
+       WHERE s.id = ?`,
+      [id]
+    );
+
+    if (!sessionRow)
+      return res.status(404).json({ ok: false, message: "Session not found" });
+
+    if (req.user.role === "COACH") {
+      const [[userRow]] = await pool.query(
+        "SELECT email FROM users WHERE id=?",
+        [req.user.id]
+      );
+      if (!userRow?.email)
+        return res.status(403).json({ ok: false, message: "Không có quyền" });
+      const coachEmail = sessionRow.coach_email?.toLowerCase();
+      if (!coachEmail || coachEmail !== userRow.email.toLowerCase()) {
+        return res
+          .status(403)
+          .json({ ok: false, message: "Không có quyền gửi thông báo" });
+      }
+    }
+
+    const [students] = await pool.query(
+      `SELECT u.email, u.name
+       FROM enrollments e
+       JOIN users u ON u.id = e.user_id
+       WHERE e.session_id = ? AND e.status='ENROLLED'`,
+      [id]
+    );
+
+    if (!students.length)
+      return res.json({ ok: true, sent: 0, total: 0 });
+
+    const startText = formatDateTime(sessionRow.start_time);
+    const endText = formatDateTime(sessionRow.end_time);
+    const locationText = sessionRow.location_name
+      ? `${sessionRow.location_name}${sessionRow.location_address ? ` – ${sessionRow.location_address}` : ""}`
+      : "Sẽ cập nhật sau";
+
+    let sent = 0;
+    let devCount = 0;
+    for (const student of students) {
+      if (!student.email) continue;
+      const html = `
+        <p>Xin chào ${student.name || "học viên"},</p>
+        <p>Đây là thông báo lịch học cho lớp <b>${sessionRow.class_title}</b>.</p>
+        <p><b>Thời gian bắt đầu:</b> ${startText}</p>
+        <p><b>Thời gian kết thúc:</b> ${endText}</p>
+        <p><b>Địa điểm:</b> ${locationText}</p>
+        <p>Rất mong bạn sắp xếp thời gian và tham gia đúng giờ.</p>
+      `;
+      try {
+        const result = await sendMail(
+          student.email,
+          `Nhắc lịch buổi học - ${sessionRow.class_title}`,
+          html
+        );
+        if (result?.dev) devCount += 1;
+        else sent += 1;
+      } catch (mailErr) {
+        console.error("notifyParticipants mail error:", mailErr);
+      }
+    }
+
+    return res.json({ ok: true, sent, total: students.length, dev: devCount });
+  } catch (error) {
+    console.error("notifyParticipants error:", error);
     return res.status(500).json({ ok: false, message: "Server error" });
   }
 }
