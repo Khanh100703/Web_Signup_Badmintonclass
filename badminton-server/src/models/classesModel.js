@@ -26,11 +26,8 @@ export async function getClasses(filters = {}) {
 
   const [rows] = await pool.query(
     `
-    SELECT
+    SELECT 
       c.id, c.title, c.description, c.capacity AS class_capacity,
-      c.image_url,
-      c.start_date,
-      c.end_date,
       c.coach_id, co.name AS coach_name,
       c.location_id, l.name AS location_name,
       c.level_id, lv.name AS level_name,
@@ -88,27 +85,13 @@ export async function createClass(data) {
     location_id = null,
     level_id = null,
     category_id = null,
-    image_url = null,
-    start_date = null,
-    end_date = null,
   } = data;
 
   const [result] = await pool.query(
     `INSERT INTO classes
-      (title, description, capacity, coach_id, location_id, level_id, category_id, image_url, start_date, end_date)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [
-      title,
-      description,
-      capacity,
-      coach_id,
-      location_id,
-      level_id,
-      category_id,
-      image_url,
-      start_date,
-      end_date,
-    ]
+      (title, description, capacity, coach_id, location_id, level_id, category_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [title, description, capacity, coach_id, location_id, level_id, category_id]
   );
   return result.insertId;
 }
@@ -125,9 +108,6 @@ export async function updateClass(id, data) {
     "location_id",
     "level_id",
     "category_id",
-    "image_url",
-    "start_date",
-    "end_date",
   ];
   for (const k of allow) {
     if (data[k] !== undefined) {

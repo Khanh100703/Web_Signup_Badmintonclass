@@ -1,6 +1,5 @@
 // ✅ Dùng named export cho pool (khớp với db.js của bạn)
 import { pool } from "../db.js";
-import * as classesModel from "../models/classesModel.js";
 
 // ===== COACHES CRUD =====
 export async function list(req, res) {
@@ -92,75 +91,6 @@ export async function remove(req, res) {
   } catch (e) {
     console.error("coaches.remove error:", e);
     return res.status(500).json({ ok: false, message: "Delete failed" });
-  }
-}
-
-export async function myClasses(req, res) {
-  try {
-    const isAdmin = req.user.role === "ADMIN";
-    let coachId = null;
-    let coachInfo = null;
-
-    if (isAdmin && req.query.coach_id) {
-      coachId = Number(req.query.coach_id);
-      if (!coachId)
-        return res.status(400).json({ ok: false, message: "Invalid coach_id" });
-      const [[c]] = await pool.query(
-        "SELECT id, name, email FROM coaches WHERE id=?",
-        [coachId]
-      );
-      if (!c)
-        return res.status(404).json({ ok: false, message: "Coach not found" });
-      coachInfo = c;
-    } else {
-      const [[userRow]] = await pool.query(
-        "SELECT id, email, name FROM users WHERE id=?",
-        [req.user.id]
-      );
-      if (!userRow)
-        return res.status(404).json({ ok: false, message: "User not found" });
-
-      const [[coachRow]] = await pool.query(
-        "SELECT id, name, email FROM coaches WHERE email = ?",
-        [userRow.email]
-      );
-      if (!coachRow) {
-        return res.json({ ok: true, data: [], coach: null });
-      }
-      coachId = coachRow.id;
-      coachInfo = coachRow;
-    }
-
-    const classes = await classesModel.getClasses({ coach_id: coachId });
-    if (!classes.length) {
-      return res.json({ ok: true, data: [], coach: coachInfo });
-    }
-
-    const ids = classes.map((c) => c.id);
-    const placeholders = ids.map(() => "?").join(",");
-    const [sessions] = await pool.query(
-      `SELECT id, class_id, start_time, end_time, capacity
-       FROM sessions
-       WHERE class_id IN (${placeholders})
-       ORDER BY start_time ASC`,
-      ids
-    );
-
-    const grouped = sessions.reduce((acc, session) => {
-      acc[session.class_id] = acc[session.class_id] || [];
-      acc[session.class_id].push(session);
-      return acc;
-    }, {});
-
-    const data = classes.map((clazz) => ({
-      ...clazz,
-      sessions: grouped[clazz.id] || [],
-    }));
-
-    return res.json({ ok: true, data, coach: coachInfo });
-  } catch (error) {
-    console.error("coaches.myClasses error:", error);
-    return res.status(500).json({ ok: false, message: "Server error" });
   }
 }
 
