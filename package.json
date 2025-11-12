@@ -1,0 +1,11 @@
+{
+  "name": "badminton-fullstack",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently \"cd badminton-server && npm run dev\" \"cd DuAn_Badminton && npm run dev\""
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}
