@@ -25,66 +25,87 @@ export default function Classes() {
   }, []);
 
   if (loading)
-    return <div className="max-w-6xl mx-auto px-4 py-10">Đang tải…</div>;
+    return (
+      <div className="min-h-[50vh] bg-gradient-to-br from-blue-50 via-white to-emerald-50 flex items-center justify-center">
+        <p className="text-sm font-medium text-blue-600 animate-pulse">
+          Đang tải danh sách khóa học...
+        </p>
+      </div>
+    );
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-10">
-      <h1 className="text-3xl font-bold mb-6">Danh sách khóa học</h1>
+    <div className="bg-gradient-to-br from-blue-50 via-white to-emerald-50 py-12">
+      <div className="max-w-6xl mx-auto px-4">
+        <div className="mb-8 text-center">
+          <p className="text-xs uppercase tracking-[0.4em] text-emerald-500">
+            Smash Lineup
+          </p>
+          <h1 className="mt-2 text-4xl font-extrabold text-slate-900">
+            Khóa học nổi bật
+          </h1>
+          <p className="mt-3 text-base text-slate-500">
+            Chọn lớp phù hợp với trình độ và lịch trình của bạn để sẵn sàng bứt phá.
+          </p>
+        </div>
 
-      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        {items.map((c) => (
-          <Link
-            to={`/classes/${c.id}`}
-            key={c.id}
-            className="rounded-2xl border bg-white overflow-hidden hover:shadow-lg hover:scale-[1.01] transition flex flex-col"
-          >
-            <div className="w-full h-40 bg-gray-100 overflow-hidden flex items-center justify-center">
-              {c.image_url ? (
-                <img
-                  src={c.image_url}
-                  alt={c.title}
-                  className="w-full h-full object-cover"
-                  loading="lazy"
-                />
-              ) : (
-                <div className="text-gray-400 text-sm">
-                  Hình ảnh đang cập nhật
-                </div>
-              )}
-            </div>
-
-            <div className="p-5 flex-1 flex flex-col">
-              <div className="font-semibold text-lg">{c.title}</div>
-              <p className="mt-2 text-sm text-gray-600 leading-relaxed flex-1">
-                {c.description ||
-                  "Khóa học cầu lông phù hợp với nhiều trình độ."}
-              </p>
-
-              <div className="mt-4 text-xs text-gray-500 flex flex-col gap-1">
-                <span>
-                  HLV: <b>{c.coach_name || "Đang cập nhật"}</b>
-                </span>
-                <span>
-                  Địa điểm: <b>{c.location_name || "Sẽ thông báo"}</b>
-                </span>
-                <span>
-                  Sức chứa: <b>{c.capacity ?? "—"}</b>
-                  {typeof c.seats_remaining === "number" && (
-                    <>
-                      {" "}
-                      — Còn: <b>{c.seats_remaining}</b>
-                    </>
-                  )}
-                </span>
-                {typeof c.price !== "undefined" && (
-                  <span>
-                    Học phí: <b>{c.price}</b>
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {items.map((c) => (
+            <Link
+              to={`/classes/${c.id}`}
+              key={c.id}
+              className="flex flex-col overflow-hidden rounded-3xl border border-blue-100 bg-white/90 shadow-sm transition hover:-translate-y-1 hover:shadow-xl hover:border-emerald-200"
+            >
+              <div className="flex h-44 items-center justify-center overflow-hidden bg-slate-100">
+                {c.image_url ? (
+                  <img
+                    src={c.image_url}
+                    alt={c.title}
+                    className="h-full w-full object-cover"
+                    loading="lazy"
+                  />
+                ) : (
+                  <span className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">
+                    Hình ảnh đang cập nhật
                   </span>
                 )}
               </div>
-            </div>
-          </Link>
-        ))}
+
+              <div className="flex flex-1 flex-col gap-4 p-6">
+                <div>
+                  <h2 className="text-lg font-semibold text-slate-900">
+                    {c.title}
+                  </h2>
+                  <p className="mt-2 text-sm leading-relaxed text-slate-500">
+                    {c.description ||
+                      "Giáo trình cầu lông được thiết kế cho mọi trình độ."}
+                  </p>
+                </div>
+
+                <div className="grid gap-2 text-xs text-slate-600">
+                  <span className="rounded-full bg-blue-50 px-3 py-1 font-semibold text-blue-600">
+                    HLV: {c.coach_name || "Đang cập nhật"}
+                  </span>
+                  <span className="rounded-full bg-emerald-50 px-3 py-1 font-semibold text-emerald-600">
+                    Địa điểm: {c.location_name || "Sẽ thông báo"}
+                  </span>
+                  <span className="rounded-full bg-slate-100 px-3 py-1 font-semibold text-slate-600">
+                    Sức chứa: {c.capacity ?? "—"}
+                    {typeof c.seats_remaining === "number" && (
+                      <span className="text-xs text-slate-500">
+                        {" "}- còn {c.seats_remaining}
+                      </span>
+                    )}
+                  </span>
+                  {typeof c.price !== "undefined" && (
+                    <span className="rounded-full bg-white px-3 py-1 font-semibold text-emerald-600">
+                      Học phí: {c.price}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </Link>
+          ))}
+        </div>
       </div>
     </div>
   );

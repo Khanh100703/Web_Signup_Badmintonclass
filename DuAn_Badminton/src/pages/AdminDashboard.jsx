@@ -1555,33 +1555,42 @@ export default function AdminDashboard() {
   );
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
-      <h1 className="text-3xl font-bold">Bảng điều khiển Admin</h1>
+    <div className="bg-gradient-to-br from-blue-50 via-white to-emerald-50 py-12">
+      <div className="max-w-7xl mx-auto space-y-8 rounded-3xl bg-white/95 px-4 py-8 shadow-xl sm:px-6 lg:px-10">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-xs uppercase tracking-[0.4em] text-emerald-500">
+              Admin Control
+            </p>
+            <h1 className="text-3xl font-bold text-slate-900">Bảng điều khiển Admin</h1>
+          </div>
+        </div>
 
-      <div className="flex flex-wrap gap-2">
-        {TABS.map((t) => (
-          <button
-            key={t.key}
-            onClick={() => setTab(t.key)}
-            className={`px-4 py-2 rounded-xl border ${
-              tab === t.key
-                ? "bg-black text-white"
-                : "bg-white hover:bg-gray-50"
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
+        <div className="flex flex-wrap gap-3">
+          {TABS.map((t) => (
+            <button
+              key={t.key}
+              onClick={() => setTab(t.key)}
+              className={`rounded-2xl px-5 py-2 text-sm font-semibold transition ${
+                tab === t.key
+                  ? "bg-gradient-to-r from-emerald-500 to-blue-600 text-white shadow-lg"
+                  : "border border-blue-100 bg-white text-slate-600 hover:border-emerald-200"
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
 
-      {tab === "overview" && renderOverview()}
-      {tab === "users" && renderUsers()}
-      {tab === "coaches" && renderCoaches()}
-      {tab === "classes" && renderClasses()}
+        {tab === "overview" && renderOverview()}
+        {tab === "users" && renderUsers()}
+        {tab === "coaches" && renderCoaches()}
+        {tab === "classes" && renderClasses()}
       {tab === "sessions" && renderSessions()}
       {tab === "locations" && renderLocations()}
       {tab === "enrollments" && renderEnrollments()}
-      {tab === "reports" && renderReports()}
+        {tab === "reports" && renderReports()}
+      </div>
     </div>
   );
 }

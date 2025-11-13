@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import AuthProvider from "./contexts/AuthProvider.jsx";
+import { NotificationProvider } from "./contexts/NotificationContext.jsx";
 import RequireAuth from "./components/RequireAuth.jsx";
 
 import Home from "./pages/Home.jsx";
@@ -17,14 +18,18 @@ import Contact from "./pages/Contact.jsx";
 import VerifyRegister from "./pages/VerifyRegister.jsx";
 import CoachClasses from "./pages/CoachClasses.jsx";
 import AdminDashboard from "./pages/AdminDashboard.jsx";
+import ProfilePage from "./pages/ProfilePage.jsx";
+import ChangePasswordPage from "./pages/ChangePasswordPage.jsx";
+import CheckoutPage from "./pages/CheckoutPage.jsx";
 
 export default function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
-        <div className="min-h-screen flex flex-col bg-white">
-          <Navbar />
-          <main className="flex-1">
+      <NotificationProvider>
+        <BrowserRouter>
+          <div className="min-h-screen flex flex-col bg-slate-950/5">
+            <Navbar />
+            <main className="flex-1">
             <Routes>
               <Route path="/" element={<Home />} />
               <Route path="/classes" element={<Classes />} />
@@ -41,6 +46,30 @@ export default function App() {
                 element={
                   <RequireAuth>
                     <MySchedule />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/profile"
+                element={
+                  <RequireAuth>
+                    <ProfilePage />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/change-password"
+                element={
+                  <RequireAuth>
+                    <ChangePasswordPage />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/classes/:id/checkout"
+                element={
+                  <RequireAuth>
+                    <CheckoutPage />
                   </RequireAuth>
                 }
               />
@@ -62,10 +91,11 @@ export default function App() {
               />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
-          </main>
-          <Footer />
-        </div>
-      </BrowserRouter>
+            </main>
+            <Footer />
+          </div>
+        </BrowserRouter>
+      </NotificationProvider>
     </AuthProvider>
   );
 }
