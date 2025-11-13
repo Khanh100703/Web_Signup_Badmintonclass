@@ -9,8 +9,15 @@ export default function Classes() {
   useEffect(() => {
     (async () => {
       try {
+        // API_URL mặc định là http://localhost:5000 và ta gọi kèm /api
         const res = await api.get("/api/classes");
-        setItems(res.data || []);
+        // wrapper fetch -> res = { ok:true, data:[...] }
+        const list = Array.isArray(res?.data) ? res.data : [];
+        setItems(list);
+        // debug: mở console để xem
+        console.log("GET /api/classes ->", res);
+      } catch (e) {
+        console.error("Classes error", e);
       } finally {
         setLoading(false);
       }
@@ -23,26 +30,20 @@ export default function Classes() {
   return (
     <div className="max-w-6xl mx-auto px-4 py-10">
       <h1 className="text-3xl font-bold mb-6">Danh sách khóa học</h1>
+
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {items.map((c) => (
           <Link
             to={`/classes/${c.id}`}
             key={c.id}
-            className="rounded-2xl border p-5 hover:shadow"
+            className="rounded-2xl border bg-white overflow-hidden hover:shadow-lg hover:scale-[1.01] transition flex flex-col"
           >
-            <div className="h-36 rounded-xl bg-gray-100 mb-3" />
-            <div className="font-semibold">{c.title}</div>
-            <div className="text-sm text-gray-600 mt-1">
-              Sức chứa: {c.class_capacity || "—"}
-              className="rounded-2xl border bg-white overflow-hidden
-              hover:shadow-lg hover:scale-[1.01] transition flex flex-col"
-            </div>
-            <div className="w-full h-56 bg-gray-100 overflow-hidden flex items-center justify-center">
+            <div className="w-full h-40 bg-gray-100 overflow-hidden flex items-center justify-center">
               {c.image_url ? (
                 <img
                   src={c.image_url}
                   alt={c.title}
-                  className="w-full h-full object-cover animate-fadeIn"
+                  className="w-full h-full object-cover"
                   loading="lazy"
                 />
               ) : (
@@ -51,12 +52,14 @@ export default function Classes() {
                 </div>
               )}
             </div>
+
             <div className="p-5 flex-1 flex flex-col">
               <div className="font-semibold text-lg">{c.title}</div>
               <p className="mt-2 text-sm text-gray-600 leading-relaxed flex-1">
                 {c.description ||
-                  "Khóa học cầu lông phù hợp với nhiều trình độ khác nhau."}
+                  "Khóa học cầu lông phù hợp với nhiều trình độ."}
               </p>
+
               <div className="mt-4 text-xs text-gray-500 flex flex-col gap-1">
                 <span>
                   HLV: <b>{c.coach_name || "Đang cập nhật"}</b>
@@ -65,8 +68,19 @@ export default function Classes() {
                   Địa điểm: <b>{c.location_name || "Sẽ thông báo"}</b>
                 </span>
                 <span>
-                  Chỗ trống ước tính: <b>{c.remaining_estimate ?? "—"}</b>
+                  Sức chứa: <b>{c.capacity ?? "—"}</b>
+                  {typeof c.seats_remaining === "number" && (
+                    <>
+                      {" "}
+                      — Còn: <b>{c.seats_remaining}</b>
+                    </>
+                  )}
                 </span>
+                {typeof c.price !== "undefined" && (
+                  <span>
+                    Học phí: <b>{c.price}</b>
+                  </span>
+                )}
               </div>
             </div>
           </Link>

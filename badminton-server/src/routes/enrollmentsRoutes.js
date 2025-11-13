@@ -1,26 +1,32 @@
 import { Router } from "express";
-import { requireAuth, requireRole } from "../middlewares/auth.js";
+import { requireAuth } from "../middlewares/auth.js";
+import { body, query, param } from "express-validator";
 import {
-  enroll,
-  cancelEnrollment,
-  myByClass,
-  listAll,
-  updateStatus,
+  enrollClass,
+  myEnrollments,
+  cancelEnrollmentById,
 } from "../controllers/enrollmentsController.js";
-import { body } from "express-validator";
 
 const router = Router();
 
-router.get("/", requireAuth, requireRole(["ADMIN"]), listAll);
-router.get("/my", requireAuth, myByClass);
-router.post("/", requireAuth, body("session_id").notEmpty(), enroll);
-router.patch(
-  "/:id/status",
+// Danh sách đơn của tôi (theo lớp)
+router.get("/my", requireAuth, myEnrollments);
+
+// Đăng ký theo LỚP
+router.post(
+  "/",
   requireAuth,
-  requireRole(["ADMIN"]),
-  body("status").isIn(["ENROLLED", "CANCELLED", "WAITLIST"]),
-  updateStatus
+  body("class_id").isInt({ gt: 0 }).withMessage("class_id is required"),
+  body("note").optional().isString().isLength({ max: 255 }),
+  enrollClass
 );
-router.delete("/:id", requireAuth, cancelEnrollment); // id_enrollments
+
+// Huỷ theo ID của enrollment
+router.delete(
+  "/:id",
+  requireAuth,
+  param("id").isInt({ gt: 0 }).withMessage("invalid enrollment id"),
+  cancelEnrollmentById
+);
 
 export default router;

@@ -217,7 +217,7 @@ export default function Home() {
           <div>
             <h2 className="text-3xl font-bold">Giới thiệu trung tâm</h2>
             <p className="mt-4 text-gray-600 leading-relaxed">
-              Học Cầu Lông được thành lập với mục tiêu mang đến môi trường tập
+              SmashBadminton được thành lập với mục tiêu mang đến môi trường tập
               luyện chuyên nghiệp, hiện đại và thân thiện cho mọi đối tượng học
               viên. Từ người mới làm quen đến vận động viên thi đấu, chúng tôi
               xây dựng giáo trình cá nhân hóa giúp bạn tiến bộ từng buổi học.

@@ -1,29 +1,23 @@
 import { useEffect, useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import { api } from "../services/api.js";
 import { useAuth } from "../hooks/useAuth.js";
-import { Link } from "react-router-dom";
 
 export default function ClassDetail() {
   const { id } = useParams();
   const { user } = useAuth();
 
   const [clazz, setClazz] = useState(null);
-  const [coach, setCoach] = useState(null);
-  const [location, setLocation] = useState(null);
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
-  const [enrolling, setEnrolling] = useState(null);
-  const [myEnrolled, setMyEnrolled] = useState(new Set());
+  const [enrolling, setEnrolling] = useState(false);
+  const [enrolledThisClass, setEnrolledThisClass] = useState(false);
 
-  const capacity = useMemo(
-    () => clazz?.capacity ?? clazz?.max_capacity ?? null,
-    [clazz]
-  );
-  const price = useMemo(() => clazz?.price ?? clazz?.tuition ?? null, [clazz]);
+  const capacity = useMemo(() => clazz?.capacity ?? null, [clazz]);
+  const price = useMemo(() => clazz?.price ?? null, [clazz]);
   const level = useMemo(
-    () => clazz?.level ?? clazz?.difficulty ?? clazz?.level?.name ?? null,
+    () => clazz?.level ?? clazz?.level?.name ?? null,
     [clazz]
   );
 
@@ -31,63 +25,31 @@ export default function ClassDetail() {
     let mounted = true;
     (async () => {
       try {
-        // 1) class detail
+        // Backend wrapper fetch: { ok:true, data:{...} }
         const res1 = await api.get(`/api/classes/${id}`);
-        const c = res1?.data || res1 || null;
-        if (!mounted) return;
+        const c = res1?.data ?? null;
         if (!c) throw new Error("Không tìm thấy lớp học");
+        if (!mounted) return;
+
         setClazz(c);
+        setSessions(Array.isArray(c.sessions) ? c.sessions : []);
 
-        // 2) sessions by class (không crash nếu lỗi)
-        try {
-          const res2 = await api.get(`/api/sessions/class/${id}`);
-          if (!mounted) return;
-          const arr = Array.isArray(res2) ? res2 : res2?.data || [];
-          setSessions(arr);
-          // eslint-disable-next-line no-unused-vars
-        } catch (e) {
-          if (mounted) setSessions([]);
-        }
-
-        // 3) coach: ưu tiên dữ liệu embed; nếu không có mà có coach_id thì gọi API riêng
-        try {
-          if (c?.coach) {
-            if (mounted) setCoach(c.coach);
-          } else if (c?.coach_id) {
-            // ĐẢM BẢO đúng route backend: /api/coaches/:id hay /api/coach/:id ?
-            const coachRes = await api.get(`/api/coaches/${c.coach_id}`);
-            const data = Array.isArray(coachRes.data)
-              ? coachRes.data[0]
-              : coachRes.data;
-            if (mounted) setCoach(data);
+        // Đã đăng ký lớp này chưa?
+        if (user) {
+          try {
+            const r = await api.get(`/api/enrollments/my`);
+            const arr = Array.isArray(r?.data) ? r.data : [];
+            const enrolled = arr.some(
+              (e) =>
+                Number(e.class_id) === Number(id) &&
+                ["PENDING_PAYMENT", "PAID", "WAITLIST"].includes(e.status)
+            );
+            if (mounted) setEnrolledThisClass(enrolled);
+          } catch {
+            if (mounted) setEnrolledThisClass(false);
           }
-          // eslint-disable-next-line no-unused-vars
-        } catch (e) {
-          if (mounted) setCoach(null);
-        }
-
-        // 4) location (nếu có)
-        try {
-          if (c?.location_id) {
-            const locRes = await api.get(`/api/locations/${c.location_id}`);
-            if (mounted) setLocation(locRes?.data || locRes || null);
-          }
-          // eslint-disable-next-line no-unused-vars
-        } catch (e) {
-          if (mounted) setLocation(null);
-        }
-
-        // 5) danh sách session_id user đã đăng ký (để disable nút)
-        try {
-          if (user) {
-            const r = await api.get(`/api/enrollments/my?class_id=${id}`);
-            if (mounted) setMyEnrolled(new Set(r?.session_ids || []));
-          } else if (mounted) {
-            setMyEnrolled(new Set());
-          }
-          // eslint-disable-next-line no-unused-vars
-        } catch (e) {
-          if (mounted) setMyEnrolled(new Set());
+        } else {
+          setEnrolledThisClass(false);
         }
       } catch (e) {
         if (mounted) setErr(e?.message || "Không tải được chi tiết lớp");
@@ -100,17 +62,23 @@ export default function ClassDetail() {
     };
   }, [id, user]);
 
-  async function enroll(session_id) {
-    setEnrolling(session_id);
+  async function enrollClass() {
+    setEnrolling(true);
     try {
-      const out = await api.post("/api/enrollments", { session_id });
-      if (out?.ok) setMyEnrolled((prev) => new Set(prev).add(session_id));
-      alert(
-        out?.message ||
-          (out?.waitlisted ? "Đã đưa vào danh sách chờ" : "Đăng ký thành công")
-      );
+      const out = await api.post("/api/enrollments", { class_id: Number(id) });
+      const ok = !!out?.ok;
+      const message =
+        out?.message || (ok ? "Đăng ký thành công" : "Không thể đăng ký");
+      if (ok) {
+        setEnrolledThisClass(true);
+        alert(message);
+      } else {
+        alert(message);
+      }
+    } catch (e) {
+      alert(e?.message || "Không thể đăng ký");
     } finally {
-      setEnrolling(null);
+      setEnrolling(false);
     }
   }
 
@@ -127,9 +95,13 @@ export default function ClassDetail() {
       </div>
     );
 
+  const seatsLeft =
+    typeof clazz.seats_remaining === "number" ? clazz.seats_remaining : null;
+  const canEnroll =
+    !!user && !enrolledThisClass && (seatsLeft === null || seatsLeft > 0);
+
   return (
     <div className="max-w-6xl mx-auto px-4 py-10 grid lg:grid-cols-3 gap-4">
-      {/* nút quay lại */}
       <div className="lg:col-span-2 -mt-6 mb-0">
         <Link
           to="/classes"
@@ -138,11 +110,12 @@ export default function ClassDetail() {
           ← Quay lại danh sách khóa học
         </Link>
       </div>
+
       {/* LEFT */}
       <div className="lg:col-span-2">
         <div className="rounded-2xl border p-6">
           {clazz.image_url && (
-            <div className="mb-6 rounded-2xl overflow-hidden bg-gray-100 aspect-video animate-fadeIn">
+            <div className="mb-6 rounded-2xl overflow-hidden bg-gray-100 aspect-video">
               <img
                 src={clazz.image_url}
                 alt={clazz.title}
@@ -151,12 +124,29 @@ export default function ClassDetail() {
               />
             </div>
           )}
-          <h1 className="text-3xl font-bold">{clazz.title || "Khóa học"}</h1>
+
+          <div className="flex items-start justify-between gap-3">
+            <h1 className="text-3xl font-bold">{clazz.title || "Khóa học"}</h1>
+            <button
+              onClick={enrollClass}
+              disabled={!canEnroll || enrolling}
+              className="px-4 py-2 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50"
+              title={!user ? "Hãy đăng nhập để đăng ký" : ""}
+            >
+              {enrolledThisClass
+                ? "Đã đăng ký"
+                : enrolling
+                ? "Đang đăng ký…"
+                : "Đăng ký"}
+            </button>
+          </div>
+
           {level && (
             <div className="mt-2 inline-block text-xs px-2 py-1 rounded-full bg-gray-100">
               Trình độ: {typeof level === "object" ? level?.name : level}
             </div>
           )}
+
           <p className="mt-4 text-gray-700 whitespace-pre-line">
             {clazz.description || "Khóa học cầu lông dành cho mọi lứa tuổi."}
           </p>
@@ -165,7 +155,15 @@ export default function ClassDetail() {
             {capacity !== null && (
               <div className="rounded-xl border p-4">
                 <div className="text-gray-500">Sức chứa</div>
-                <div className="font-semibold">{capacity} học viên</div>
+                <div className="font-semibold">
+                  {capacity} học viên
+                  {seatsLeft !== null && (
+                    <span className="text-gray-500 font-normal">
+                      {" "}
+                      — còn {seatsLeft}
+                    </span>
+                  )}
+                </div>
               </div>
             )}
             {price && (
@@ -174,77 +172,36 @@ export default function ClassDetail() {
                 <div className="font-semibold">{price}</div>
               </div>
             )}
-            {(clazz.start_date || clazz.end_date) && (
-              <div className="rounded-xl border p-4">
-                <div className="text-gray-500">Thời gian khóa</div>
-                <div className="font-semibold">
-                  {clazz.start_date
-                    ? new Date(clazz.start_date).toLocaleDateString("vi-VN")
-                    : "Chưa xác định"}
-                  {clazz.end_date
-                    ? ` - ${new Date(clazz.end_date).toLocaleDateString(
-                        "vi-VN"
-                      )}`
-                    : ""}
-                </div>
-              </div>
-            )}
-            {location && (
-              <div className="rounded-xl border p-4 sm:col-span-2">
-                <div className="text-gray-500">Địa điểm</div>
-                <div className="font-semibold">
-                  {location?.name || "Sân tập"}
-                  {location?.address ? ` – ${location.address}` : ""}
-                </div>
-              </div>
-            )}
           </div>
         </div>
 
-        {/* SESSIONS */}
+        {/* LỊCH BUỔI */}
         <div className="mt-8 rounded-2xl border overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-gray-50">
               <tr>
                 <th className="text-left p-3">Bắt đầu</th>
                 <th className="text-left p-3">Kết thúc</th>
-                <th className="text-left p-3">Thao tác</th>
               </tr>
             </thead>
             <tbody>
-              {sessions.map((s) => {
-                const disabled = enrolling === s.id || myEnrolled.has(s.id);
-                return (
-                  <tr key={s.id} className="border-t">
-                    <td className="p-3">
-                      {s?.start_time
-                        ? new Date(s.start_time).toLocaleString()
-                        : "—"}
-                    </td>
-                    <td className="p-3">
-                      {s?.end_time
-                        ? new Date(s.end_time).toLocaleString()
-                        : "—"}
-                    </td>
-                    <td className="p-3">
-                      <button
-                        onClick={() => enroll(s.id)}
-                        className="px-3 py-2 rounded-xl border hover:shadow hover:scale-[1.02] transition disabled:opacity-60"
-                        disabled={disabled}
-                      >
-                        {myEnrolled.has(s.id)
-                          ? "Đã đăng ký"
-                          : enrolling === s.id
-                          ? "Đang đăng ký…"
-                          : "Đăng ký"}
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
+              {sessions.map((s) => (
+                <tr key={s.id} className="border-t">
+                  <td className="p-3">
+                    {s?.start_time
+                      ? new Date(s.start_time).toLocaleString("vi-VN")
+                      : "—"}
+                  </td>
+                  <td className="p-3">
+                    {s?.end_time
+                      ? new Date(s.end_time).toLocaleString("vi-VN")
+                      : "—"}
+                  </td>
+                </tr>
+              ))}
               {!sessions.length && (
                 <tr>
-                  <td className="p-3 text-gray-500" colSpan={3}>
+                  <td className="p-3 text-gray-500" colSpan={2}>
                     Chưa có lịch cho khóa này
                   </td>
                 </tr>
@@ -254,16 +211,16 @@ export default function ClassDetail() {
         </div>
       </div>
 
-      {/* HLV */}
+      {/* HLV / ĐỊA ĐIỂM từ clazz */}
       <aside className="lg:col-span-1">
         <div className="rounded-2xl border p-6">
           <div className="text-lg font-semibold mb-4">Huấn luyện viên</div>
-          {coach ? (
+          {clazz?.coach ? (
             <div className="flex gap-4 items-center">
-              {coach.photo_url ? (
+              {clazz.coach.photo_url ? (
                 <img
-                  src={coach.photo_url}
-                  alt={coach.name || "Coach"}
+                  src={clazz.coach.photo_url}
+                  alt={clazz.coach.name || "Coach"}
                   className="w-20 h-20 rounded-full object-cover border"
                   loading="lazy"
                 />
@@ -273,24 +230,32 @@ export default function ClassDetail() {
                 </div>
               )}
               <div className="flex-1">
-                <div className="font-semibold">{coach.name}</div>
-                {coach.email && (
-                  <div className="text-sm text-gray-600">{coach.email}</div>
+                <div className="font-semibold">{clazz.coach.name}</div>
+                {clazz.coach.email && (
+                  <div className="text-sm text-gray-600">
+                    {clazz.coach.email}
+                  </div>
                 )}
-                {coach.phone && (
-                  <div className="text-sm text-gray-600">☎ {coach.phone}</div>
+                {clazz.coach.phone && (
+                  <div className="text-sm text-gray-600">
+                    ☎ {clazz.coach.phone}
+                  </div>
                 )}
-                <Link
-                  to="/coaches"
-                  className="text-sm underline mt-2 inline-block"
-                >
-                  Xem tất cả HLV
-                </Link>
               </div>
             </div>
           ) : (
             <div className="text-sm text-gray-600">
               Khóa học chưa gán huấn luyện viên.
+            </div>
+          )}
+
+          {clazz?.location && (
+            <div className="mt-6">
+              <div className="text-lg font-semibold mb-2">Địa điểm</div>
+              <div className="text-sm">
+                <b>{clazz.location.name}</b>
+                {clazz.location.address ? ` — ${clazz.location.address}` : ""}
+              </div>
             </div>
           )}
         </div>

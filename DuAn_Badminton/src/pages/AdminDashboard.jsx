@@ -1,6 +1,25 @@
 import { useEffect, useMemo, useState } from "react";
 import { api } from "../services/api.js";
 
+/** Helper: chấp nhận nhiều kiểu response (mảng trực tiếp, {ok,data}, {data:[…]}) */
+function toArray(res) {
+  if (Array.isArray(res)) return res;
+  if (Array.isArray(res?.data)) return res.data;
+  if (Array.isArray(res?.data?.data)) return res.data.data;
+  return [];
+}
+const fmtDT = (v) =>
+  v ? new Date(v).toLocaleString("vi-VN", { hour12: false }) : "—";
+const toDate = (v) => (v ? new Date(v).toISOString().slice(0, 10) : "");
+const toDTLocal = (v) => {
+  if (!v) return "";
+  const d = new Date(v);
+  if (Number.isNaN(d.getTime())) return "";
+  const off = d.getTimezoneOffset();
+  return new Date(d.getTime() - off * 60000).toISOString().slice(0, 16);
+};
+const fromDTLocal = (v) => (v ? new Date(v).toISOString() : null);
+
 const TABS = [
   { key: "overview", label: "Tổng quan" },
   { key: "users", label: "Tài khoản" },
@@ -9,201 +28,231 @@ const TABS = [
   { key: "sessions", label: "Buổi học" },
   { key: "locations", label: "Địa điểm" },
   { key: "enrollments", label: "Đăng ký" },
-  { key: "reports", label: "Thống kê" },
+  { key: "reports", label: "Báo cáo" },
 ];
 
-function formatDateTime(value) {
-  if (!value) return "—";
-  try {
-    return new Date(value).toLocaleString("vi-VN", { hour12: false });
-  } catch {
-    return value;
-  }
-}
-
-function toDateInput(value) {
-  if (!value) return "";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
-  return date.toISOString().slice(0, 10);
-}
-
-function toDateTimeLocal(value) {
-  if (!value) return "";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
-  const offset = date.getTimezoneOffset();
-  const local = new Date(date.getTime() - offset * 60 * 1000);
-  return local.toISOString().slice(0, 16);
-}
-
-function fromDateTimeLocal(value) {
-  if (!value) return null;
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return null;
-  return date.toISOString();
-}
-
 export default function AdminDashboard() {
-  const [activeTab, setActiveTab] = useState("overview");
+  const [tab, setTab] = useState("overview");
 
+  // ===== Users =====
   const [users, setUsers] = useState([]);
   const [usersLoading, setUsersLoading] = useState(false);
 
+  // ===== Coaches =====
   const [coaches, setCoaches] = useState([]);
   const [coachesLoading, setCoachesLoading] = useState(false);
-  const [newCoach, setNewCoach] = useState({
+  const [coachForm, setCoachForm] = useState({
     name: "",
     email: "",
     phone: "",
     experience: "",
     photo_url: "",
   });
-  const [editingCoachId, setEditingCoachId] = useState(null);
-  const [editingCoach, setEditingCoach] = useState(null);
+  const [coachEdit, setCoachEdit] = useState(null);
 
-  const [classesData, setClassesData] = useState([]);
+  // ===== Locations =====
+  const [locations, setLocations] = useState([]);
+  const [locLoading, setLocLoading] = useState(false);
+  const [locForm, setLocForm] = useState({
+    name: "",
+    address: "",
+    capacity: "",
+    notes: "",
+  });
+  const [locEdit, setLocEdit] = useState(null);
+
+  // ===== Levels/Categories (danh mục chọn) =====
+  const [levels, setLevels] = useState([]);
+  const [categories, setCategories] = useState([]);
+
+  // ===== Classes =====
+  const [classes, setClasses] = useState([]);
   const [classesLoading, setClassesLoading] = useState(false);
-  const [newClass, setNewClass] = useState({
+  const [classForm, setClassForm] = useState({
     title: "",
     coach_id: "",
     location_id: "",
     level_id: "",
     category_id: "",
     capacity: "",
-    description: "",
+    price: "",
     image_url: "",
     start_date: "",
     end_date: "",
+    description: "",
   });
-  const [editingClassId, setEditingClassId] = useState(null);
-  const [editingClass, setEditingClass] = useState(null);
+  const [classEditId, setClassEditId] = useState(null);
+  const [classEdit, setClassEdit] = useState(null);
 
-  const [locations, setLocations] = useState([]);
-  const [locationsLoading, setLocationsLoading] = useState(false);
-  const [newLocation, setNewLocation] = useState({
-    name: "",
-    address: "",
-    capacity: "",
-    notes: "",
-  });
-  const [editingLocationId, setEditingLocationId] = useState(null);
-  const [editingLocation, setEditingLocation] = useState(null);
-
+  // ===== Sessions =====
   const [sessions, setSessions] = useState([]);
   const [sessionsLoading, setSessionsLoading] = useState(false);
-  const [selectedClassForSessions, setSelectedClassForSessions] = useState("");
-  const [newSession, setNewSession] = useState({
+  const [selectClassId, setSelectClassId] = useState("");
+  const [sesForm, setSesForm] = useState({
     start_time: "",
     end_time: "",
     capacity: "",
   });
-  const [editingSessionId, setEditingSessionId] = useState(null);
-  const [editingSession, setEditingSession] = useState(null);
+  const [sesEditId, setSesEditId] = useState(null);
+  const [sesEdit, setSesEdit] = useState(null);
 
+  // ===== Enrollments =====
   const [enrollments, setEnrollments] = useState([]);
-  const [enrollmentsLoading, setEnrollmentsLoading] = useState(false);
+  const [enrollLoading, setEnrollLoading] = useState(false);
 
-  const [levels, setLevels] = useState([]);
-  const [categories, setCategories] = useState([]);
-
-  const [reportFilters, setReportFilters] = useState(() => {
+  // ===== Reports =====
+  const [report, setReport] = useState([]);
+  const [reportLoading, setReportLoading] = useState(false);
+  const [reportFilter, setReportFilter] = useState(() => {
     const to = new Date();
     const from = new Date();
     from.setDate(to.getDate() - 30);
     return {
-      from: from.toISOString().slice(0, 10),
-      to: to.toISOString().slice(0, 10),
+      from: toDate(from.toISOString()),
+      to: toDate(to.toISOString()),
       by: "class",
     };
   });
-  const [reportData, setReportData] = useState([]);
-  const [reportLoading, setReportLoading] = useState(false);
 
+  // ===== Initial loads =====
   useEffect(() => {
     loadUsers();
     loadCoaches();
-    loadClasses();
     loadLocations();
     loadLevels();
     loadCategories();
+    loadClasses();
   }, []);
-
   useEffect(() => {
-    if (selectedClassForSessions) {
-      loadSessions(selectedClassForSessions);
-    }
-  }, [selectedClassForSessions]);
-
+    if (classes.length && !selectClassId)
+      setSelectClassId(String(classes[0].id));
+  }, [classes, selectClassId]);
   useEffect(() => {
-    if (classesData.length && !selectedClassForSessions) {
-      setSelectedClassForSessions(String(classesData[0].id));
-    }
-  }, [classesData, selectedClassForSessions]);
-
+    if (selectClassId) loadSessions(selectClassId);
+  }, [selectClassId]);
   useEffect(() => {
-    if (activeTab === "reports") {
-      loadReport();
-    }
-    if (activeTab === "enrollments" || activeTab === "overview") {
-      loadEnrollments();
-    }
-  }, [activeTab, loadReport]);
-
+    if (tab === "enrollments" || tab === "overview") loadEnrollments();
+  }, [tab]);
   useEffect(() => {
-    if (activeTab === "reports") {
-      loadReport();
-    }
-  }, [activeTab, loadReport, reportFilters]);
+    if (tab === "reports") loadReport();
+  }, [tab, reportFilter, loadReport]);
 
+  // ===== API loaders =====
   async function loadUsers() {
     setUsersLoading(true);
     try {
-      const res = await api.get("/api/admin/users");
-      setUsers(res?.data || res?.users || []);
-    } catch (err) {
-      console.error("loadUsers", err);
+      setUsers(toArray(await api.get("/api/admin/users")));
+    } catch (e) {
+      console.error(e);
     } finally {
       setUsersLoading(false);
     }
   }
-
-  async function toggleUserLock(user) {
-    try {
-      const endpoint = user.is_locked ? "unlock" : "lock";
-      await api.patch(`/api/admin/users/${user.id}/${endpoint}`);
-      loadUsers();
-    } catch (err) {
-      alert(err?.message || "Không cập nhật được trạng thái tài khoản");
-    }
-  }
-
-  async function changeUserRole(userId, role) {
-    try {
-      await api.patch(`/api/admin/users/${userId}/role`, { role });
-      loadUsers();
-    } catch (err) {
-      alert(err?.message || "Không đổi được vai trò");
-    }
-  }
-
   async function loadCoaches() {
     setCoachesLoading(true);
     try {
-      const res = await api.get("/api/coaches");
-      setCoaches(res?.data || []);
-    } catch (err) {
-      console.error("loadCoaches", err);
+      setCoaches(toArray(await api.get("/api/coaches")));
+    } catch (e) {
+      console.error(e);
     } finally {
       setCoachesLoading(false);
     }
   }
+  async function loadLocations() {
+    setLocLoading(true);
+    try {
+      setLocations(toArray(await api.get("/api/locations")));
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLocLoading(false);
+    }
+  }
+  async function loadLevels() {
+    try {
+      setLevels(toArray(await api.get("/api/levels")));
+    } catch (e) {
+      console.error(e);
+    }
+  }
+  async function loadCategories() {
+    try {
+      setCategories(toArray(await api.get("/api/categories")));
+    } catch (e) {
+      console.error(e);
+    }
+  }
+  async function loadClasses() {
+    setClassesLoading(true);
+    try {
+      setClasses(toArray(await api.get("/api/classes")));
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setClassesLoading(false);
+    }
+  }
+  async function loadSessions(classId) {
+    setSessionsLoading(true);
+    try {
+      setSessions(toArray(await api.get(`/api/sessions/class/${classId}`)));
+    } catch (e) {
+      console.error(e);
+      setSessions([]);
+    } finally {
+      setSessionsLoading(false);
+    }
+  }
+  async function loadEnrollments() {
+    setEnrollLoading(true);
+    try {
+      setEnrollments(toArray(await api.get("/api/enrollments")));
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setEnrollLoading(false);
+    }
+  }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  async function loadReport() {
+    setReportLoading(true);
+    try {
+      const q = new URLSearchParams(reportFilter).toString();
+      setReport(toArray(await api.get(`/api/reports/summary?${q}`)));
+    } catch (e) {
+      console.error(e);
+      setReport([]);
+    } finally {
+      setReportLoading(false);
+    }
+  }
 
-  async function submitNewCoach(e) {
+  // ===== Users actions =====
+  async function toggleUserLock(u) {
+    try {
+      await api.patch(
+        `/api/admin/users/${u.id}/${u.is_locked ? "unlock" : "lock"}`
+      );
+      loadUsers();
+    } catch (e) {
+      alert(e?.message || "Không cập nhật được trạng thái");
+    }
+  }
+  async function changeUserRole(id, role) {
+    try {
+      await api.patch(`/api/admin/users/${id}/role`, { role });
+      loadUsers();
+    } catch (e) {
+      alert(e?.message || "Không đổi được vai trò");
+    }
+  }
+
+  // ===== Coaches actions =====
+  async function submitCoach(e) {
     e.preventDefault();
     try {
-      await api.post("/api/coaches", newCoach);
-      setNewCoach({
+      await api.post("/api/coaches", coachForm);
+      setCoachForm({
         name: "",
         email: "",
         phone: "",
@@ -211,1557 +260,1327 @@ export default function AdminDashboard() {
         photo_url: "",
       });
       loadCoaches();
-    } catch (err) {
-      alert(err?.message || "Không tạo được huấn luyện viên");
+    } catch (e) {
+      alert(e?.message || "Không tạo được HLV");
     }
   }
-
-  function startEditCoach(coach) {
-    setEditingCoachId(coach.id);
-    setEditingCoach({ ...coach });
+  function startEditCoach(c) {
+    setCoachEdit({ ...c });
   }
-
   async function saveCoach() {
     try {
-      await api.put(`/api/coaches/${editingCoachId}`, editingCoach);
-      setEditingCoachId(null);
-      setEditingCoach(null);
+      await api.put(`/api/coaches/${coachEdit.id}`, coachEdit);
+      setCoachEdit(null);
       loadCoaches();
-    } catch (err) {
-      alert(err?.message || "Không cập nhật được thông tin huấn luyện viên");
+    } catch (e) {
+      alert(e?.message || "Không cập nhật HLV");
     }
   }
-
   async function removeCoach(id) {
-    if (!window.confirm("Bạn có chắc muốn xoá huấn luyện viên này?")) return;
+    if (!window.confirm("Xoá huấn luyện viên này?")) return;
     try {
       await api.del(`/api/coaches/${id}`);
       loadCoaches();
-    } catch (err) {
-      alert(err?.message || "Không xoá được huấn luyện viên");
+    } catch (e) {
+      alert(e?.message || "Không xoá được HLV");
     }
   }
 
-  async function loadClasses() {
-    setClassesLoading(true);
-    try {
-      const res = await api.get("/api/classes");
-      setClassesData(res?.data || []);
-    } catch (err) {
-      console.error("loadClasses", err);
-    } finally {
-      setClassesLoading(false);
-    }
-  }
-
-  async function submitNewClass(e) {
+  // ===== Locations actions =====
+  async function submitLocation(e) {
     e.preventDefault();
     try {
       const payload = {
-        title: newClass.title,
-        coach_id: newClass.coach_id ? Number(newClass.coach_id) : null,
-        location_id: newClass.location_id ? Number(newClass.location_id) : null,
-        level_id: newClass.level_id ? Number(newClass.level_id) : null,
-        category_id: newClass.category_id ? Number(newClass.category_id) : null,
-        capacity: newClass.capacity ? Number(newClass.capacity) : null,
-        description: newClass.description || null,
-        image_url: newClass.image_url || null,
-        start_date: newClass.start_date || null,
-        end_date: newClass.end_date || null,
+        name: locForm.name,
+        address: locForm.address || null,
+        capacity: locForm.capacity ? Number(locForm.capacity) : null,
+        notes: locForm.notes || null,
+      };
+      await api.post("/api/locations", payload);
+      setLocForm({ name: "", address: "", capacity: "", notes: "" });
+      loadLocations();
+    } catch (e) {
+      alert(e?.message || "Không tạo được địa điểm");
+    }
+  }
+  async function saveLocation() {
+    try {
+      const payload = {
+        ...locEdit,
+        capacity: locEdit.capacity ? Number(locEdit.capacity) : null,
+      };
+      await api.put(`/api/locations/${locEdit.id}`, payload);
+      setLocEdit(null);
+      loadLocations();
+    } catch (e) {
+      alert(e?.message || "Không cập nhật địa điểm");
+    }
+  }
+  async function removeLocation(id) {
+    if (!window.confirm("Xoá địa điểm này?")) return;
+    try {
+      await api.del(`/api/locations/${id}`);
+      loadLocations();
+    } catch (e) {
+      alert(e?.message || "Không xoá được địa điểm");
+    }
+  }
+
+  // ===== Classes actions =====
+  async function submitClass(e) {
+    e.preventDefault();
+    try {
+      const payload = {
+        title: classForm.title,
+        coach_id: classForm.coach_id ? Number(classForm.coach_id) : null,
+        location_id: classForm.location_id
+          ? Number(classForm.location_id)
+          : null,
+        level_id: classForm.level_id ? Number(classForm.level_id) : null,
+        category_id: classForm.category_id
+          ? Number(classForm.category_id)
+          : null,
+        capacity: classForm.capacity ? Number(classForm.capacity) : null,
+        price: classForm.price ? Number(classForm.price) : 0,
+        image_url: classForm.image_url || null,
+        start_date: classForm.start_date || null,
+        end_date: classForm.end_date || null,
+        description: classForm.description || null,
       };
       await api.post("/api/classes", payload);
-      setNewClass({
+      setClassForm({
         title: "",
         coach_id: "",
         location_id: "",
         level_id: "",
         category_id: "",
         capacity: "",
-        description: "",
+        price: "",
         image_url: "",
         start_date: "",
         end_date: "",
+        description: "",
       });
       loadClasses();
-    } catch (err) {
-      alert(err?.message || "Không tạo được lớp học");
+    } catch (e) {
+      alert(e?.message || "Không tạo được lớp");
     }
   }
-
-  function startEditClass(clazz) {
-    setEditingClassId(clazz.id);
-    setEditingClass({
-      title: clazz.title || "",
-      coach_id: clazz.coach_id || "",
-      location_id: clazz.location_id || "",
-      level_id: clazz.level_id || "",
-      category_id: clazz.category_id || "",
-      capacity: clazz.class_capacity || "",
-      description: clazz.description || "",
-      image_url: clazz.image_url || "",
-      start_date: toDateInput(clazz.start_date) || "",
-      end_date: toDateInput(clazz.end_date) || "",
+  function startEditClass(c) {
+    setClassEditId(c.id);
+    setClassEdit({
+      id: c.id,
+      title: c.title || "",
+      coach_id: c.coach_id || "",
+      location_id: c.location_id || "",
+      level_id: c.level_id || "",
+      category_id: c.category_id || "",
+      capacity: c.capacity || "",
+      price: c.price || "",
+      image_url: c.image_url || "",
+      start_date: toDate(c.start_date) || "",
+      end_date: toDate(c.end_date) || "",
+      description: c.description || "",
     });
   }
-
   async function saveClass() {
     try {
       const payload = {
-        ...editingClass,
-        coach_id: editingClass.coach_id ? Number(editingClass.coach_id) : null,
-        location_id: editingClass.location_id
-          ? Number(editingClass.location_id)
+        title: classEdit.title,
+        coach_id: classEdit.coach_id ? Number(classEdit.coach_id) : null,
+        location_id: classEdit.location_id
+          ? Number(classEdit.location_id)
           : null,
-        level_id: editingClass.level_id ? Number(editingClass.level_id) : null,
-        category_id: editingClass.category_id
-          ? Number(editingClass.category_id)
+        level_id: classEdit.level_id ? Number(classEdit.level_id) : null,
+        category_id: classEdit.category_id
+          ? Number(classEdit.category_id)
           : null,
-        capacity: editingClass.capacity ? Number(editingClass.capacity) : null,
-        start_date: editingClass.start_date || null,
-        end_date: editingClass.end_date || null,
+        capacity: classEdit.capacity ? Number(classEdit.capacity) : null,
+        price: classEdit.price ? Number(classEdit.price) : 0,
+        image_url: classEdit.image_url || null,
+        start_date: classEdit.start_date || null,
+        end_date: classEdit.end_date || null,
+        description: classEdit.description || null,
       };
-      await api.put(`/api/classes/${editingClassId}`, payload);
-      setEditingClassId(null);
-      setEditingClass(null);
+      await api.put(`/api/classes/${classEditId}`, payload);
+      setClassEditId(null);
+      setClassEdit(null);
       loadClasses();
-    } catch (err) {
-      alert(err?.message || "Không cập nhật được lớp học");
+    } catch (e) {
+      alert(e?.message || "Không cập nhật lớp");
     }
   }
-
   async function removeClass(id) {
-    if (!window.confirm("Bạn có chắc muốn xoá lớp học này?")) return;
+    if (!window.confirm("Xoá lớp học này?")) return;
     try {
       await api.del(`/api/classes/${id}`);
       loadClasses();
-    } catch (err) {
-      alert(err?.message || "Không xoá được lớp học");
+    } catch (e) {
+      alert(e?.message || "Không xoá được lớp (có thể lớp vẫn còn buổi)");
     }
   }
 
-  async function loadLocations() {
-    setLocationsLoading(true);
-    try {
-      const res = await api.get("/api/locations");
-      setLocations(res?.data || []);
-    } catch (err) {
-      console.error("loadLocations", err);
-    } finally {
-      setLocationsLoading(false);
-    }
-  }
-
-  async function submitNewLocation(e) {
+  // ===== Sessions actions =====
+  async function submitSession(e) {
     e.preventDefault();
+    if (!selectClassId) return;
     try {
       const payload = {
-        name: newLocation.name,
-        address: newLocation.address,
-        capacity: newLocation.capacity ? Number(newLocation.capacity) : null,
-        notes: newLocation.notes || null,
-      };
-      await api.post("/api/locations", payload);
-      setNewLocation({ name: "", address: "", capacity: "", notes: "" });
-      loadLocations();
-    } catch (err) {
-      alert(err?.message || "Không tạo được địa điểm");
-    }
-  }
-
-  function startEditLocation(location) {
-    setEditingLocationId(location.id);
-    setEditingLocation({
-      name: location.name || "",
-      address: location.address || "",
-      capacity: location.capacity || "",
-      notes: location.notes || "",
-    });
-  }
-
-  async function saveLocation() {
-    try {
-      const payload = {
-        ...editingLocation,
-        capacity: editingLocation.capacity
-          ? Number(editingLocation.capacity)
-          : null,
-      };
-      await api.put(`/api/locations/${editingLocationId}`, payload);
-      setEditingLocationId(null);
-      setEditingLocation(null);
-      loadLocations();
-    } catch (err) {
-      alert(err?.message || "Không cập nhật được địa điểm");
-    }
-  }
-
-  async function removeLocation(id) {
-    if (!window.confirm("Bạn có chắc muốn xoá địa điểm này?")) return;
-    try {
-      await api.del(`/api/locations/${id}`);
-      loadLocations();
-    } catch (err) {
-      alert(err?.message || "Không xoá được địa điểm");
-    }
-  }
-
-  async function loadSessions(classId) {
-    setSessionsLoading(true);
-    try {
-      const res = await api.get(`/api/sessions/class/${classId}`);
-      const arr = Array.isArray(res) ? res : res?.data || [];
-      setSessions(arr);
-    } catch (err) {
-      console.error("loadSessions", err);
-      setSessions([]);
-    } finally {
-      setSessionsLoading(false);
-    }
-  }
-
-  async function submitNewSession(e) {
-    e.preventDefault();
-    if (!selectedClassForSessions) return;
-    try {
-      const payload = {
-        class_id: Number(selectedClassForSessions),
-        start_time: fromDateTimeLocal(newSession.start_time),
-        end_time: fromDateTimeLocal(newSession.end_time),
-        capacity: newSession.capacity ? Number(newSession.capacity) : null,
+        class_id: Number(selectClassId),
+        start_time: fromDTLocal(sesForm.start_time),
+        end_time: fromDTLocal(sesForm.end_time),
+        capacity: sesForm.capacity ? Number(sesForm.capacity) : null,
       };
       await api.post("/api/sessions", payload);
-      setNewSession({ start_time: "", end_time: "", capacity: "" });
-      loadSessions(selectedClassForSessions);
-    } catch (err) {
-      alert(err?.message || "Không tạo được buổi học");
+      setSesForm({ start_time: "", end_time: "", capacity: "" });
+      loadSessions(selectClassId);
+    } catch (e) {
+      alert(e?.message || "Không tạo được buổi học");
     }
   }
-
-  function startEditSession(session) {
-    setEditingSessionId(session.id);
-    setEditingSession({
-      start_time: toDateTimeLocal(session.start_time) || "",
-      end_time: toDateTimeLocal(session.end_time) || "",
-      capacity: session.capacity || "",
+  function startEditSession(s) {
+    setSesEditId(s.id);
+    setSesEdit({
+      start_time: toDTLocal(s.start_time) || "",
+      end_time: toDTLocal(s.end_time) || "",
+      capacity: s.capacity || "",
     });
   }
-
   async function saveSession() {
     try {
       const payload = {
-        start_time: fromDateTimeLocal(editingSession.start_time),
-        end_time: fromDateTimeLocal(editingSession.end_time),
-        capacity: editingSession.capacity
-          ? Number(editingSession.capacity)
-          : null,
+        start_time: fromDTLocal(sesEdit.start_time),
+        end_time: fromDTLocal(sesEdit.end_time),
+        capacity: sesEdit.capacity ? Number(sesEdit.capacity) : null,
       };
-      await api.put(`/api/sessions/${editingSessionId}`, payload);
-      setEditingSessionId(null);
-      setEditingSession(null);
-      loadSessions(selectedClassForSessions);
-    } catch (err) {
-      alert(err?.message || "Không cập nhật được buổi học");
+      await api.put(`/api/sessions/${sesEditId}`, payload);
+      setSesEditId(null);
+      setSesEdit(null);
+      loadSessions(selectClassId);
+    } catch (e) {
+      alert(e?.message || "Không cập nhật buổi học");
     }
   }
-
   async function removeSession(id) {
-    if (!window.confirm("Bạn có chắc muốn xoá buổi học này?")) return;
+    if (!window.confirm("Xoá buổi học này?")) return;
     try {
       await api.del(`/api/sessions/${id}`);
-      loadSessions(selectedClassForSessions);
-    } catch (err) {
-      alert(err?.message || "Không xoá được buổi học");
+      loadSessions(selectClassId);
+    } catch (e) {
+      alert(e?.message || "Không xoá được buổi");
     }
   }
-
   async function notifySession(id) {
     try {
       const res = await api.post(`/api/sessions/${id}/notify`);
-      if (res?.ok) {
-        alert(
-          res.sent
-            ? `Đã gửi thông báo cho ${res.sent} học viên.`
-            : "Không có học viên nào được gửi thông báo."
-        );
-      } else {
-        alert(res?.message || "Gửi thông báo thất bại");
-      }
-    } catch (err) {
-      alert(err?.message || "Không gửi được thông báo");
+      alert(
+        res?.message ||
+          (res?.ok ? "Đã gửi thông báo" : "Gửi thông báo thất bại")
+      );
+    } catch (e) {
+      alert(e?.message || "Không gửi được thông báo");
     }
   }
 
-  async function loadEnrollments() {
-    setEnrollmentsLoading(true);
-    try {
-      const res = await api.get("/api/enrollments");
-      setEnrollments(res?.data || []);
-    } catch (err) {
-      console.error("loadEnrollments", err);
-    } finally {
-      setEnrollmentsLoading(false);
-    }
-  }
-
-  async function updateEnrollmentStatus(id, status) {
+  // ===== Enrollments actions =====
+  async function updateEnrollStatus(id, status) {
     try {
       await api.patch(`/api/enrollments/${id}/status`, { status });
       loadEnrollments();
-    } catch (err) {
-      alert(err?.message || "Không cập nhật được trạng thái đăng ký");
+    } catch (e) {
+      alert(e?.message || "Không cập nhật trạng thái đăng ký");
     }
   }
 
-  async function loadLevels() {
-    try {
-      const res = await api.get("/api/levels");
-      setLevels(res?.data || []);
-    } catch (err) {
-      console.error("loadLevels", err);
-    }
-  }
-
-  async function loadCategories() {
-    try {
-      const res = await api.get("/api/categories");
-      setCategories(res?.data || []);
-    } catch (err) {
-      console.error("loadCategories", err);
-    }
-  }
-
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  async function loadReport() {
-    setReportLoading(true);
-    try {
-      const query = new URLSearchParams({
-        by: reportFilters.by,
-        from: reportFilters.from,
-        to: reportFilters.to,
-      }).toString();
-      const res = await api.get(`/api/reports/summary?${query}`);
-      setReportData(res?.data || []);
-    } catch (err) {
-      console.error("loadReport", err);
-      setReportData([]);
-    } finally {
-      setReportLoading(false);
-    }
-  }
-
-  const overviewStats = useMemo(() => {
-    const totalStudents = enrollments.filter(
-      (e) => e.status === "ENROLLED"
+  // ===== Overview stats =====
+  const overview = useMemo(() => {
+    const activeStudents = enrollments.filter((e) =>
+      ["PAID", "PENDING_PAYMENT"].includes(e.status)
     ).length;
     return [
-      { label: "Khóa học", value: classesData.length },
+      { label: "Khóa học", value: classes.length },
       { label: "Huấn luyện viên", value: coaches.length },
       { label: "Địa điểm", value: locations.length },
-      { label: "Học viên đang tham gia", value: totalStudents },
+      { label: "Học viên đang tham gia", value: activeStudents },
     ];
-  }, [classesData.length, coaches.length, locations.length, enrollments]);
+  }, [classes, coaches, locations, enrollments]);
 
-  function renderOverviewTab() {
-    return (
-      <div className="space-y-10">
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {overviewStats.map((item) => (
-            <div key={item.label} className="rounded-2xl border p-6 bg-white">
-              <div className="text-sm text-gray-500">{item.label}</div>
-              <div className="mt-2 text-2xl font-semibold">{item.value}</div>
-            </div>
-          ))}
-        </div>
-
-        <div className="rounded-2xl border p-6 bg-white">
-          <h2 className="text-xl font-semibold mb-4">Hoạt động gần đây</h2>
-          <p className="text-sm text-gray-600">
-            Sử dụng các tab bên trên để quản lý tài khoản, lớp học, buổi học và
-            theo dõi báo cáo thống kê. Các thay đổi sẽ được cập nhật theo thời
-            gian thực cho toàn bộ hệ thống.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  function renderUsersTab() {
-    return (
-      <div>
-        <h2 className="text-2xl font-semibold mb-4">Quản lý tài khoản</h2>
-        {usersLoading ? (
-          <div className="p-6 text-gray-500">
-            Đang tải danh sách người dùng…
+  // ===== Renderers =====
+  const renderOverview = () => (
+    <div className="space-y-8">
+      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {overview.map((s) => (
+          <div key={s.label} className="rounded-2xl border p-6 bg-white">
+            <div className="text-sm text-gray-500">{s.label}</div>
+            <div className="mt-2 text-2xl font-semibold">{s.value}</div>
           </div>
-        ) : (
-          <div className="overflow-x-auto rounded-2xl border">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="p-3 text-left">Tên</th>
-                  <th className="p-3 text-left">Email</th>
-                  <th className="p-3 text-left">Vai trò</th>
-                  <th className="p-3 text-left">Trạng thái</th>
-                  <th className="p-3 text-left">Thao tác</th>
+        ))}
+      </div>
+      <div className="rounded-2xl border p-6 bg-white">
+        <h3 className="text-lg font-semibold mb-2">Gợi ý</h3>
+        <p className="text-sm text-gray-600">
+          Quản lý khoá học, buổi học, HLV, địa điểm và theo dõi đăng ký trong
+          các tab bên trên. Hệ thống đã đồng bộ đăng ký theo <b>class_id</b>{" "}
+          (không theo session).
+        </p>
+      </div>
+    </div>
+  );
+
+  const renderUsers = () => (
+    <div>
+      <h2 className="text-2xl font-semibold mb-4">Tài khoản</h2>
+      {usersLoading ? (
+        <div className="p-6">Đang tải…</div>
+      ) : (
+        <div className="overflow-x-auto rounded-2xl border bg-white">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="p-3 text-left">Tên</th>
+                <th className="p-3 text-left">Email</th>
+                <th className="p-3 text-left">Vai trò</th>
+                <th className="p-3 text-left">Trạng thái</th>
+                <th className="p-3 text-left">Thao tác</th>
+              </tr>
+            </thead>
+            <tbody>
+              {users.map((u) => (
+                <tr key={u.id} className="border-t">
+                  <td className="p-3">{u.name}</td>
+                  <td className="p-3 text-gray-600">{u.email}</td>
+                  <td className="p-3">
+                    <select
+                      value={u.role}
+                      onChange={(e) => changeUserRole(u.id, e.target.value)}
+                      className="border rounded-lg px-2 py-1"
+                    >
+                      <option value="USER">USER</option>
+                      <option value="COACH">COACH</option>
+                      <option value="ADMIN">ADMIN</option>
+                    </select>
+                  </td>
+                  <td className="p-3">
+                    {u.is_locked ? (
+                      <span className="text-red-600">Đã khoá</span>
+                    ) : (
+                      <span className="text-green-600">Hoạt động</span>
+                    )}
+                  </td>
+                  <td className="p-3">
+                    <button
+                      onClick={() => toggleUserLock(u)}
+                      className="px-3 py-1.5 rounded-xl border"
+                    >
+                      {u.is_locked ? "Mở khoá" : "Khoá"}
+                    </button>
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {users.map((user) => (
-                  <tr key={user.id} className="border-t">
-                    <td className="p-3">{user.name}</td>
-                    <td className="p-3 text-gray-600">{user.email}</td>
-                    <td className="p-3">
-                      <select
-                        value={user.role}
-                        onChange={(e) =>
-                          changeUserRole(user.id, e.target.value)
-                        }
-                        className="border rounded-lg px-3 py-1"
-                      >
-                        <option value="USER">USER</option>
-                        <option value="COACH">COACH</option>
-                        <option value="ADMIN">ADMIN</option>
-                      </select>
-                    </td>
-                    <td className="p-3">
-                      {user.is_locked ? (
-                        <span className="text-red-500 font-semibold">
-                          Đã khoá
-                        </span>
-                      ) : (
-                        <span className="text-green-600">Hoạt động</span>
-                      )}
-                    </td>
-                    <td className="p-3">
-                      <button
-                        onClick={() => toggleUserLock(user)}
-                        className="px-3 py-1.5 rounded-xl border hover:bg-gray-50"
-                      >
-                        {user.is_locked ? "Mở khoá" : "Khoá tài khoản"}
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-                {!users.length && (
-                  <tr>
-                    <td className="p-4 text-center text-gray-500" colSpan={5}>
-                      Chưa có người dùng nào.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+              ))}
+              {!users.length && (
+                <tr>
+                  <td className="p-6 text-center text-gray-500" colSpan={5}>
+                    Chưa có tài khoản.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+
+  const renderCoaches = () => (
+    <div className="space-y-10">
+      {/* form */}
+      <form
+        onSubmit={submitCoach}
+        className="grid md:grid-cols-2 gap-4 rounded-2xl border p-6 bg-white"
+      >
+        <div className="space-y-2">
+          <label className="block text-sm font-semibold">Tên</label>
+          <input
+            required
+            value={coachForm.name}
+            onChange={(e) =>
+              setCoachForm((v) => ({ ...v, name: e.target.value }))
+            }
+            className="w-full border rounded-xl px-3 py-2"
+          />
+        </div>
+        <div className="space-y-2">
+          <label className="block text-sm font-semibold">Email</label>
+          <input
+            type="email"
+            value={coachForm.email}
+            onChange={(e) =>
+              setCoachForm((v) => ({ ...v, email: e.target.value }))
+            }
+            className="w-full border rounded-xl px-3 py-2"
+          />
+        </div>
+        <div className="space-y-2">
+          <label className="block text-sm font-semibold">SĐT</label>
+          <input
+            value={coachForm.phone}
+            onChange={(e) =>
+              setCoachForm((v) => ({ ...v, phone: e.target.value }))
+            }
+            className="w-full border rounded-xl px-3 py-2"
+          />
+        </div>
+        <div className="space-y-2">
+          <label className="block text-sm font-semibold">Ảnh (URL)</label>
+          <input
+            value={coachForm.photo_url}
+            onChange={(e) =>
+              setCoachForm((v) => ({ ...v, photo_url: e.target.value }))
+            }
+            className="w-full border rounded-xl px-3 py-2"
+          />
+        </div>
+        <div className="md:col-span-2 space-y-2">
+          <label className="block text-sm font-semibold">Kinh nghiệm</label>
+          <textarea
+            value={coachForm.experience}
+            onChange={(e) =>
+              setCoachForm((v) => ({ ...v, experience: e.target.value }))
+            }
+            className="w-full border rounded-xl px-3 py-2 min-h-[80px]"
+          />
+        </div>
+        <div className="md:col-span-2 flex justify-end">
+          <button className="px-4 py-2 rounded-xl bg-black text-white">
+            Thêm HLV
+          </button>
+        </div>
+      </form>
+
+      {/* list */}
+      <div className="space-y-4">
+        {coachesLoading ? (
+          <div className="p-6">Đang tải…</div>
+        ) : (
+          coaches.map((c) => (
+            <div key={c.id} className="rounded-2xl border p-5 bg-white">
+              {coachEdit?.id === c.id ? (
+                <div className="grid md:grid-cols-2 gap-4">
+                  <input
+                    className="border rounded-xl px-3 py-2"
+                    value={coachEdit.name}
+                    onChange={(e) =>
+                      setCoachEdit((v) => ({ ...v, name: e.target.value }))
+                    }
+                  />
+                  <input
+                    className="border rounded-xl px-3 py-2"
+                    value={coachEdit.email || ""}
+                    onChange={(e) =>
+                      setCoachEdit((v) => ({ ...v, email: e.target.value }))
+                    }
+                  />
+                  <input
+                    className="border rounded-xl px-3 py-2"
+                    value={coachEdit.phone || ""}
+                    onChange={(e) =>
+                      setCoachEdit((v) => ({ ...v, phone: e.target.value }))
+                    }
+                  />
+                  <input
+                    className="border rounded-xl px-3 py-2"
+                    value={coachEdit.photo_url || ""}
+                    onChange={(e) =>
+                      setCoachEdit((v) => ({ ...v, photo_url: e.target.value }))
+                    }
+                  />
+                  <textarea
+                    className="md:col-span-2 border rounded-xl px-3 py-2"
+                    value={coachEdit.experience || ""}
+                    onChange={(e) =>
+                      setCoachEdit((v) => ({
+                        ...v,
+                        experience: e.target.value,
+                      }))
+                    }
+                  />
+                  <div className="md:col-span-2 flex justify-end gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setCoachEdit(null)}
+                      className="px-4 py-2 rounded-xl border"
+                    >
+                      Huỷ
+                    </button>
+                    <button
+                      type="button"
+                      onClick={saveCoach}
+                      className="px-4 py-2 rounded-xl bg-black text-white"
+                    >
+                      Lưu
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div>
+                    <div className="text-lg font-semibold">{c.name}</div>
+                    <div className="text-sm text-gray-600">
+                      {c.email || "(chưa có email)"} •{" "}
+                      {c.phone || "(chưa có SĐT)"}
+                    </div>
+                    <p className="mt-2 text-sm text-gray-600 whitespace-pre-line">
+                      {c.experience || "Chưa có mô tả"}
+                    </p>
+                  </div>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => startEditCoach(c)}
+                      className="px-3 py-2 rounded-xl border"
+                    >
+                      Sửa
+                    </button>
+                    <button
+                      onClick={() => removeCoach(c.id)}
+                      className="px-3 py-2 rounded-xl border text-red-600"
+                    >
+                      Xoá
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))
+        )}
+        {!coaches.length && !coachesLoading && (
+          <div className="rounded-2xl border p-6 text-center text-gray-500">
+            Chưa có HLV.
           </div>
         )}
       </div>
-    );
-  }
+    </div>
+  );
 
-  function renderCoachesTab() {
-    return (
-      <div className="space-y-10">
-        <div>
-          <h2 className="text-2xl font-semibold mb-4">Thêm huấn luyện viên</h2>
-          <form
-            onSubmit={submitNewCoach}
-            className="grid md:grid-cols-2 gap-4 rounded-2xl border p-6 bg-white"
-          >
-            <div className="space-y-2">
-              <label className="block text-sm font-semibold">Tên</label>
-              <input
-                required
-                value={newCoach.name}
-                onChange={(e) =>
-                  setNewCoach((v) => ({ ...v, name: e.target.value }))
-                }
-                className="w-full border rounded-xl px-3 py-2"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="block text-sm font-semibold">Email</label>
-              <input
-                type="email"
-                value={newCoach.email}
-                onChange={(e) =>
-                  setNewCoach((v) => ({ ...v, email: e.target.value }))
-                }
-                className="w-full border rounded-xl px-3 py-2"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="block text-sm font-semibold">
-                Số điện thoại
-              </label>
-              <input
-                value={newCoach.phone}
-                onChange={(e) =>
-                  setNewCoach((v) => ({ ...v, phone: e.target.value }))
-                }
-                className="w-full border rounded-xl px-3 py-2"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="block text-sm font-semibold">
-                Ảnh đại diện (URL)
-              </label>
-              <input
-                value={newCoach.photo_url}
-                onChange={(e) =>
-                  setNewCoach((v) => ({ ...v, photo_url: e.target.value }))
-                }
-                className="w-full border rounded-xl px-3 py-2"
-              />
-            </div>
-            <div className="md:col-span-2 space-y-2">
-              <label className="block text-sm font-semibold">Kinh nghiệm</label>
-              <textarea
-                value={newCoach.experience}
-                onChange={(e) =>
-                  setNewCoach((v) => ({ ...v, experience: e.target.value }))
-                }
-                className="w-full border rounded-xl px-3 py-2 min-h-[80px]"
-              />
-            </div>
-            <div className="md:col-span-2 flex justify-end">
-              <button className="px-4 py-2 rounded-xl bg-black text-white">
-                Thêm huấn luyện viên
-              </button>
-            </div>
-          </form>
+  const renderClasses = () => (
+    <div className="space-y-10">
+      {/* form */}
+      <form
+        onSubmit={submitClass}
+        className="grid lg:grid-cols-2 gap-4 rounded-2xl border p-6 bg-white"
+      >
+        <div className="lg:col-span-2 space-y-2">
+          <label className="text-sm font-semibold">Tên lớp</label>
+          <input
+            required
+            value={classForm.title}
+            onChange={(e) =>
+              setClassForm((v) => ({ ...v, title: e.target.value }))
+            }
+            className="w-full border rounded-xl px-3 py-2"
+          />
         </div>
-
-        <div>
-          <h2 className="text-2xl font-semibold mb-4">
-            Danh sách huấn luyện viên
-          </h2>
-          {coachesLoading ? (
-            <div className="p-6 text-gray-500">Đang tải dữ liệu…</div>
-          ) : (
-            <div className="space-y-4">
-              {coaches.map((coach) => (
-                <div key={coach.id} className="rounded-2xl border p-5 bg-white">
-                  {editingCoachId === coach.id ? (
-                    <div className="grid md:grid-cols-2 gap-4">
-                      <input
-                        className="border rounded-xl px-3 py-2"
-                        value={editingCoach.name}
-                        onChange={(e) =>
-                          setEditingCoach((v) => ({
-                            ...v,
-                            name: e.target.value,
-                          }))
-                        }
-                      />
-                      <input
-                        className="border rounded-xl px-3 py-2"
-                        value={editingCoach.email || ""}
-                        onChange={(e) =>
-                          setEditingCoach((v) => ({
-                            ...v,
-                            email: e.target.value,
-                          }))
-                        }
-                      />
-                      <input
-                        className="border rounded-xl px-3 py-2"
-                        value={editingCoach.phone || ""}
-                        onChange={(e) =>
-                          setEditingCoach((v) => ({
-                            ...v,
-                            phone: e.target.value,
-                          }))
-                        }
-                      />
-                      <input
-                        className="border rounded-xl px-3 py-2"
-                        value={editingCoach.photo_url || ""}
-                        onChange={(e) =>
-                          setEditingCoach((v) => ({
-                            ...v,
-                            photo_url: e.target.value,
-                          }))
-                        }
-                      />
-                      <textarea
-                        className="md:col-span-2 border rounded-xl px-3 py-2"
-                        value={editingCoach.experience || ""}
-                        onChange={(e) =>
-                          setEditingCoach((v) => ({
-                            ...v,
-                            experience: e.target.value,
-                          }))
-                        }
-                      />
-                      <div className="md:col-span-2 flex justify-end gap-3">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setEditingCoachId(null);
-                            setEditingCoach(null);
-                          }}
-                          className="px-4 py-2 rounded-xl border"
-                        >
-                          Huỷ
-                        </button>
-                        <button
-                          type="button"
-                          onClick={saveCoach}
-                          className="px-4 py-2 rounded-xl bg-black text-white"
-                        >
-                          Lưu
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex flex-wrap items-start justify-between gap-4">
-                      <div>
-                        <div className="text-lg font-semibold">
-                          {coach.name}
-                        </div>
-                        <div className="text-sm text-gray-600">
-                          {coach.email || "(chưa có email)"}
-                        </div>
-                        <div className="text-sm text-gray-600">
-                          {coach.phone || "(chưa có SĐT)"}
-                        </div>
-                        <p className="mt-2 text-sm text-gray-600 leading-relaxed whitespace-pre-line">
-                          {coach.experience || "Chưa cập nhật mô tả"}
-                        </p>
-                      </div>
-                      <div className="flex gap-3">
-                        <button
-                          onClick={() => startEditCoach(coach)}
-                          className="px-3 py-2 rounded-xl border"
-                        >
-                          Chỉnh sửa
-                        </button>
-                        <button
-                          onClick={() => removeCoach(coach.id)}
-                          className="px-3 py-2 rounded-xl border text-red-600"
-                        >
-                          Xoá
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ))}
-              {!coaches.length && (
-                <div className="rounded-2xl border p-6 text-center text-gray-500">
-                  Chưa có huấn luyện viên.
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  function renderClassesTab() {
-    return (
-      <div className="space-y-10">
-        <div>
-          <h2 className="text-2xl font-semibold mb-4">Tạo lớp học</h2>
-          <form
-            onSubmit={submitNewClass}
-            className="grid lg:grid-cols-2 gap-4 rounded-2xl border p-6 bg-white"
-          >
-            <div className="space-y-2 lg:col-span-2">
-              <label className="block text-sm font-semibold">Tên lớp</label>
-              <input
-                required
-                value={newClass.title}
-                onChange={(e) =>
-                  setNewClass((v) => ({ ...v, title: e.target.value }))
-                }
-                className="w-full border rounded-xl px-3 py-2"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="block text-sm font-semibold">
-                Huấn luyện viên
-              </label>
-              <select
-                required
-                value={newClass.coach_id}
-                onChange={(e) =>
-                  setNewClass((v) => ({ ...v, coach_id: e.target.value }))
-                }
-                className="w-full border rounded-xl px-3 py-2"
-              >
-                <option value="">-- Chọn --</option>
-                {coaches.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-2">
-              <label className="block text-sm font-semibold">Địa điểm</label>
-              <select
-                value={newClass.location_id}
-                onChange={(e) =>
-                  setNewClass((v) => ({ ...v, location_id: e.target.value }))
-                }
-                className="w-full border rounded-xl px-3 py-2"
-              >
-                <option value="">-- Chọn --</option>
-                {locations.map((l) => (
-                  <option key={l.id} value={l.id}>
-                    {l.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-2">
-              <label className="block text-sm font-semibold">Trình độ</label>
-              <select
-                value={newClass.level_id}
-                onChange={(e) =>
-                  setNewClass((v) => ({ ...v, level_id: e.target.value }))
-                }
-                className="w-full border rounded-xl px-3 py-2"
-              >
-                <option value="">-- Chọn --</option>
-                {levels.map((l) => (
-                  <option key={l.id} value={l.id}>
-                    {l.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-2">
-              <label className="block text-sm font-semibold">Danh mục</label>
-              <select
-                value={newClass.category_id}
-                onChange={(e) =>
-                  setNewClass((v) => ({ ...v, category_id: e.target.value }))
-                }
-                className="w-full border rounded-xl px-3 py-2"
-              >
-                <option value="">-- Chọn --</option>
-                {categories.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-2">
-              <label className="block text-sm font-semibold">Sức chứa</label>
-              <input
-                type="number"
-                min="0"
-                value={newClass.capacity}
-                onChange={(e) =>
-                  setNewClass((v) => ({ ...v, capacity: e.target.value }))
-                }
-                className="w-full border rounded-xl px-3 py-2"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="block text-sm font-semibold">
-                Ảnh minh hoạ
-              </label>
-              <input
-                value={newClass.image_url}
-                onChange={(e) =>
-                  setNewClass((v) => ({ ...v, image_url: e.target.value }))
-                }
-                className="w-full border rounded-xl px-3 py-2"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="block text-sm font-semibold">
-                Ngày bắt đầu
-              </label>
-              <input
-                type="date"
-                value={newClass.start_date}
-                onChange={(e) =>
-                  setNewClass((v) => ({ ...v, start_date: e.target.value }))
-                }
-                className="w-full border rounded-xl px-3 py-2"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="block text-sm font-semibold">
-                Ngày kết thúc
-              </label>
-              <input
-                type="date"
-                value={newClass.end_date}
-                onChange={(e) =>
-                  setNewClass((v) => ({ ...v, end_date: e.target.value }))
-                }
-                className="w-full border rounded-xl px-3 py-2"
-              />
-            </div>
-            <div className="lg:col-span-2 space-y-2">
-              <label className="block text-sm font-semibold">Mô tả</label>
-              <textarea
-                value={newClass.description}
-                onChange={(e) =>
-                  setNewClass((v) => ({ ...v, description: e.target.value }))
-                }
-                className="w-full border rounded-xl px-3 py-2 min-h-[90px]"
-              />
-            </div>
-            <div className="lg:col-span-2 flex justify-end">
-              <button className="px-4 py-2 rounded-xl bg-black text-white">
-                Tạo lớp học
-              </button>
-            </div>
-          </form>
-        </div>
-
-        <div>
-          <h2 className="text-2xl font-semibold mb-4">Danh sách lớp học</h2>
-          {classesLoading ? (
-            <div className="p-6 text-gray-500">Đang tải dữ liệu…</div>
-          ) : (
-            <div className="space-y-4">
-              {classesData.map((clazz) => (
-                <div key={clazz.id} className="rounded-2xl border p-5 bg-white">
-                  {editingClassId === clazz.id ? (
-                    <div className="grid md:grid-cols-2 gap-4">
-                      <input
-                        className="border rounded-xl px-3 py-2"
-                        value={editingClass.title}
-                        onChange={(e) =>
-                          setEditingClass((v) => ({
-                            ...v,
-                            title: e.target.value,
-                          }))
-                        }
-                      />
-                      <select
-                        className="border rounded-xl px-3 py-2"
-                        value={editingClass.coach_id}
-                        onChange={(e) =>
-                          setEditingClass((v) => ({
-                            ...v,
-                            coach_id: e.target.value,
-                          }))
-                        }
-                      >
-                        <option value="">-- Chọn HLV --</option>
-                        {coaches.map((c) => (
-                          <option key={c.id} value={c.id}>
-                            {c.name}
-                          </option>
-                        ))}
-                      </select>
-                      <select
-                        className="border rounded-xl px-3 py-2"
-                        value={editingClass.location_id}
-                        onChange={(e) =>
-                          setEditingClass((v) => ({
-                            ...v,
-                            location_id: e.target.value,
-                          }))
-                        }
-                      >
-                        <option value="">-- Chọn địa điểm --</option>
-                        {locations.map((l) => (
-                          <option key={l.id} value={l.id}>
-                            {l.name}
-                          </option>
-                        ))}
-                      </select>
-                      <input
-                        className="border rounded-xl px-3 py-2"
-                        type="number"
-                        value={editingClass.capacity}
-                        onChange={(e) =>
-                          setEditingClass((v) => ({
-                            ...v,
-                            capacity: e.target.value,
-                          }))
-                        }
-                      />
-                      <input
-                        className="border rounded-xl px-3 py-2"
-                        value={editingClass.image_url || ""}
-                        onChange={(e) =>
-                          setEditingClass((v) => ({
-                            ...v,
-                            image_url: e.target.value,
-                          }))
-                        }
-                      />
-                      <input
-                        type="date"
-                        className="border rounded-xl px-3 py-2"
-                        value={editingClass.start_date || ""}
-                        onChange={(e) =>
-                          setEditingClass((v) => ({
-                            ...v,
-                            start_date: e.target.value,
-                          }))
-                        }
-                      />
-                      <input
-                        type="date"
-                        className="border rounded-xl px-3 py-2"
-                        value={editingClass.end_date || ""}
-                        onChange={(e) =>
-                          setEditingClass((v) => ({
-                            ...v,
-                            end_date: e.target.value,
-                          }))
-                        }
-                      />
-                      <textarea
-                        className="md:col-span-2 border rounded-xl px-3 py-2"
-                        value={editingClass.description || ""}
-                        onChange={(e) =>
-                          setEditingClass((v) => ({
-                            ...v,
-                            description: e.target.value,
-                          }))
-                        }
-                      />
-                      <div className="md:col-span-2 flex justify-end gap-3">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setEditingClassId(null);
-                            setEditingClass(null);
-                          }}
-                          className="px-4 py-2 rounded-xl border"
-                        >
-                          Huỷ
-                        </button>
-                        <button
-                          type="button"
-                          onClick={saveClass}
-                          className="px-4 py-2 rounded-xl bg-black text-white"
-                        >
-                          Lưu
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex flex-wrap items-start justify-between gap-4">
-                      <div>
-                        <div className="text-lg font-semibold">
-                          {clazz.title}
-                        </div>
-                        <div className="text-sm text-gray-500">
-                          HLV: {clazz.coach_name || "Đang cập nhật"} • Sức chứa:{" "}
-                          {clazz.class_capacity || "—"}
-                        </div>
-                        <p className="mt-2 text-sm text-gray-600 leading-relaxed">
-                          {clazz.description || "Chưa có mô tả"}
-                        </p>
-                      </div>
-                      <div className="flex gap-3">
-                        <button
-                          onClick={() => startEditClass(clazz)}
-                          className="px-3 py-2 rounded-xl border"
-                        >
-                          Chỉnh sửa
-                        </button>
-                        <button
-                          onClick={() => removeClass(clazz.id)}
-                          className="px-3 py-2 rounded-xl border text-red-600"
-                        >
-                          Xoá
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ))}
-              {!classesData.length && (
-                <div className="rounded-2xl border p-6 text-center text-gray-500">
-                  Chưa có lớp học.
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  function renderSessionsTab() {
-    if (!classesData.length)
-      return (
-        <div className="rounded-2xl border p-6 text-center text-gray-500">
-          Chưa có lớp học để tạo buổi học.
-        </div>
-      );
-    return (
-      <div className="space-y-8">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <h2 className="text-2xl font-semibold">Quản lý buổi học</h2>
+        <div className="space-y-2">
+          <label className="text-sm font-semibold">HLV</label>
           <select
-            value={selectedClassForSessions}
-            onChange={(e) => setSelectedClassForSessions(e.target.value)}
-            className="border rounded-xl px-3 py-2"
+            required
+            value={classForm.coach_id}
+            onChange={(e) =>
+              setClassForm((v) => ({ ...v, coach_id: e.target.value }))
+            }
+            className="w-full border rounded-xl px-3 py-2"
           >
-            {classesData.map((clazz) => (
-              <option key={clazz.id} value={clazz.id}>
-                {clazz.title}
+            <option value="">-- Chọn --</option>
+            {coaches.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
               </option>
             ))}
           </select>
         </div>
-
-        <form
-          onSubmit={submitNewSession}
-          className="grid md:grid-cols-4 gap-4 rounded-2xl border p-6 bg-white"
-        >
-          <div className="space-y-2 md:col-span-2">
-            <label className="block text-sm font-semibold">Bắt đầu</label>
-            <input
-              type="datetime-local"
-              required
-              value={newSession.start_time}
-              onChange={(e) =>
-                setNewSession((v) => ({ ...v, start_time: e.target.value }))
-              }
-              className="w-full border rounded-xl px-3 py-2"
-            />
-          </div>
-          <div className="space-y-2 md:col-span-2">
-            <label className="block text-sm font-semibold">Kết thúc</label>
-            <input
-              type="datetime-local"
-              required
-              value={newSession.end_time}
-              onChange={(e) =>
-                setNewSession((v) => ({ ...v, end_time: e.target.value }))
-              }
-              className="w-full border rounded-xl px-3 py-2"
-            />
-          </div>
-          <div className="space-y-2">
-            <label className="block text-sm font-semibold">Sức chứa</label>
-            <input
-              type="number"
-              value={newSession.capacity}
-              onChange={(e) =>
-                setNewSession((v) => ({ ...v, capacity: e.target.value }))
-              }
-              className="w-full border rounded-xl px-3 py-2"
-            />
-          </div>
-          <div className="md:col-span-3 flex justify-end">
-            <button className="px-4 py-2 rounded-xl bg-black text-white">
-              Tạo buổi học
-            </button>
-          </div>
-        </form>
-
-        <div className="rounded-2xl border overflow-hidden">
-          {sessionsLoading ? (
-            <div className="p-6 text-gray-500">
-              Đang tải danh sách buổi học…
-            </div>
-          ) : (
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="p-3 text-left">Bắt đầu</th>
-                  <th className="p-3 text-left">Kết thúc</th>
-                  <th className="p-3 text-left">Sức chứa</th>
-                  <th className="p-3 text-left">Thao tác</th>
-                </tr>
-              </thead>
-              <tbody>
-                {sessions.map((session) => (
-                  <tr key={session.id} className="border-t">
-                    <td className="p-3">
-                      {editingSessionId === session.id ? (
-                        <input
-                          type="datetime-local"
-                          value={editingSession.start_time}
-                          onChange={(e) =>
-                            setEditingSession((v) => ({
-                              ...v,
-                              start_time: e.target.value,
-                            }))
-                          }
-                          className="border rounded-xl px-3 py-2"
-                        />
-                      ) : (
-                        formatDateTime(session.start_time)
-                      )}
-                    </td>
-                    <td className="p-3">
-                      {editingSessionId === session.id ? (
-                        <input
-                          type="datetime-local"
-                          value={editingSession.end_time}
-                          onChange={(e) =>
-                            setEditingSession((v) => ({
-                              ...v,
-                              end_time: e.target.value,
-                            }))
-                          }
-                          className="border rounded-xl px-3 py-2"
-                        />
-                      ) : (
-                        formatDateTime(session.end_time)
-                      )}
-                    </td>
-                    <td className="p-3">
-                      {editingSessionId === session.id ? (
-                        <input
-                          type="number"
-                          value={editingSession.capacity}
-                          onChange={(e) =>
-                            setEditingSession((v) => ({
-                              ...v,
-                              capacity: e.target.value,
-                            }))
-                          }
-                          className="border rounded-xl px-3 py-2 w-24"
-                        />
-                      ) : (
-                        session.capacity ?? "—"
-                      )}
-                    </td>
-                    <td className="p-3 flex flex-wrap gap-2">
-                      {editingSessionId === session.id ? (
-                        <>
-                          <button
-                            onClick={saveSession}
-                            className="px-3 py-1.5 rounded-xl border bg-black text-white"
-                          >
-                            Lưu
-                          </button>
-                          <button
-                            onClick={() => {
-                              setEditingSessionId(null);
-                              setEditingSession(null);
-                            }}
-                            className="px-3 py-1.5 rounded-xl border"
-                          >
-                            Huỷ
-                          </button>
-                        </>
-                      ) : (
-                        <>
-                          <button
-                            onClick={() => startEditSession(session)}
-                            className="px-3 py-1.5 rounded-xl border"
-                          >
-                            Chỉnh sửa
-                          </button>
-                          <button
-                            onClick={() => notifySession(session.id)}
-                            className="px-3 py-1.5 rounded-xl border"
-                          >
-                            Gửi email nhắc
-                          </button>
-                        </>
-                      )}
-                      <button
-                        onClick={() => removeSession(session.id)}
-                        className="px-3 py-1.5 rounded-xl border text-red-600"
-                      >
-                        Xoá
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-                {!sessions.length && (
-                  <tr>
-                    <td className="p-4 text-center text-gray-500" colSpan={4}>
-                      Chưa có buổi học.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  function renderLocationsTab() {
-    return (
-      <div className="space-y-10">
-        <div>
-          <h2 className="text-2xl font-semibold mb-4">Thêm địa điểm</h2>
-          <form
-            onSubmit={submitNewLocation}
-            className="grid md:grid-cols-2 gap-4 rounded-2xl border p-6 bg-white"
+        <div className="space-y-2">
+          <label className="text-sm font-semibold">Địa điểm</label>
+          <select
+            value={classForm.location_id}
+            onChange={(e) =>
+              setClassForm((v) => ({ ...v, location_id: e.target.value }))
+            }
+            className="w-full border rounded-xl px-3 py-2"
           >
-            <div className="space-y-2">
-              <label className="block text-sm font-semibold">
-                Tên địa điểm
-              </label>
-              <input
-                required
-                value={newLocation.name}
-                onChange={(e) =>
-                  setNewLocation((v) => ({ ...v, name: e.target.value }))
-                }
-                className="w-full border rounded-xl px-3 py-2"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="block text-sm font-semibold">Địa chỉ</label>
-              <input
-                value={newLocation.address}
-                onChange={(e) =>
-                  setNewLocation((v) => ({ ...v, address: e.target.value }))
-                }
-                className="w-full border rounded-xl px-3 py-2"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="block text-sm font-semibold">Sức chứa</label>
-              <input
-                type="number"
-                value={newLocation.capacity}
-                onChange={(e) =>
-                  setNewLocation((v) => ({ ...v, capacity: e.target.value }))
-                }
-                className="w-full border rounded-xl px-3 py-2"
-              />
-            </div>
-            <div className="md:col-span-2 space-y-2">
-              <label className="block text-sm font-semibold">Ghi chú</label>
-              <textarea
-                value={newLocation.notes}
-                onChange={(e) =>
-                  setNewLocation((v) => ({ ...v, notes: e.target.value }))
-                }
-                className="w-full border rounded-xl px-3 py-2 min-h-[80px]"
-              />
-            </div>
-            <div className="md:col-span-2 flex justify-end">
-              <button className="px-4 py-2 rounded-xl bg-black text-white">
-                Thêm địa điểm
-              </button>
-            </div>
-          </form>
+            <option value="">-- Chọn --</option>
+            {locations.map((l) => (
+              <option key={l.id} value={l.id}>
+                {l.name}
+              </option>
+            ))}
+          </select>
         </div>
+        <div className="space-y-2">
+          <label className="text-sm font-semibold">Trình độ</label>
+          <select
+            value={classForm.level_id}
+            onChange={(e) =>
+              setClassForm((v) => ({ ...v, level_id: e.target.value }))
+            }
+            className="w-full border rounded-xl px-3 py-2"
+          >
+            <option value="">-- Chọn --</option>
+            {levels.map((l) => (
+              <option key={l.id} value={l.id}>
+                {l.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="space-y-2">
+          <label className="text-sm font-semibold">Danh mục</label>
+          <select
+            value={classForm.category_id}
+            onChange={(e) =>
+              setClassForm((v) => ({ ...v, category_id: e.target.value }))
+            }
+            className="w-full border rounded-xl px-3 py-2"
+          >
+            <option value="">-- Chọn --</option>
+            {categories.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="space-y-2">
+          <label className="text-sm font-semibold">Sức chứa</label>
+          <input
+            type="number"
+            value={classForm.capacity}
+            onChange={(e) =>
+              setClassForm((v) => ({ ...v, capacity: e.target.value }))
+            }
+            className="w-full border rounded-xl px-3 py-2"
+          />
+        </div>
+        <div className="space-y-2">
+          <label className="text-sm font-semibold">Học phí</label>
+          <input
+            type="number"
+            value={classForm.price}
+            onChange={(e) =>
+              setClassForm((v) => ({ ...v, price: e.target.value }))
+            }
+            className="w-full border rounded-xl px-3 py-2"
+          />
+        </div>
+        <div className="space-y-2">
+          <label className="text-sm font-semibold">Ảnh</label>
+          <input
+            value={classForm.image_url}
+            onChange={(e) =>
+              setClassForm((v) => ({ ...v, image_url: e.target.value }))
+            }
+            className="w-full border rounded-xl px-3 py-2"
+          />
+        </div>
+        <div className="space-y-2">
+          <label className="text-sm font-semibold">Bắt đầu</label>
+          <input
+            type="date"
+            value={classForm.start_date}
+            onChange={(e) =>
+              setClassForm((v) => ({ ...v, start_date: e.target.value }))
+            }
+            className="w-full border rounded-xl px-3 py-2"
+          />
+        </div>
+        <div className="space-y-2">
+          <label className="text-sm font-semibold">Kết thúc</label>
+          <input
+            type="date"
+            value={classForm.end_date}
+            onChange={(e) =>
+              setClassForm((v) => ({ ...v, end_date: e.target.value }))
+            }
+            className="w-full border rounded-xl px-3 py-2"
+          />
+        </div>
+        <div className="lg:col-span-2 space-y-2">
+          <label className="text-sm font-semibold">Mô tả</label>
+          <textarea
+            value={classForm.description}
+            onChange={(e) =>
+              setClassForm((v) => ({ ...v, description: e.target.value }))
+            }
+            className="w-full border rounded-xl px-3 py-2 min-h-[90px]"
+          />
+        </div>
+        <div className="lg:col-span-2 flex justify-end">
+          <button className="px-4 py-2 rounded-xl bg-black text-white">
+            Tạo lớp
+          </button>
+        </div>
+      </form>
 
-        <div>
-          <h2 className="text-2xl font-semibold mb-4">Danh sách địa điểm</h2>
-          {locationsLoading ? (
-            <div className="p-6 text-gray-500">Đang tải dữ liệu…</div>
-          ) : (
-            <div className="space-y-4">
-              {locations.map((location) => (
-                <div
-                  key={location.id}
-                  className="rounded-2xl border p-5 bg-white"
-                >
-                  {editingLocationId === location.id ? (
-                    <div className="grid md:grid-cols-2 gap-4">
+      {/* list */}
+      <div className="space-y-4">
+        {classesLoading ? (
+          <div className="p-6">Đang tải…</div>
+        ) : (
+          classes.map((c) => (
+            <div key={c.id} className="rounded-2xl border p-5 bg-white">
+              {classEditId === c.id ? (
+                <div className="grid md:grid-cols-2 gap-4">
+                  <input
+                    className="border rounded-xl px-3 py-2"
+                    value={classEdit.title}
+                    onChange={(e) =>
+                      setClassEdit((v) => ({ ...v, title: e.target.value }))
+                    }
+                  />
+                  <select
+                    className="border rounded-xl px-3 py-2"
+                    value={classEdit.coach_id}
+                    onChange={(e) =>
+                      setClassEdit((v) => ({ ...v, coach_id: e.target.value }))
+                    }
+                  >
+                    <option value="">-- Chọn HLV --</option>
+                    {coaches.map((x) => (
+                      <option key={x.id} value={x.id}>
+                        {x.name}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    className="border rounded-xl px-3 py-2"
+                    value={classEdit.location_id}
+                    onChange={(e) =>
+                      setClassEdit((v) => ({
+                        ...v,
+                        location_id: e.target.value,
+                      }))
+                    }
+                  >
+                    <option value="">-- Chọn địa điểm --</option>
+                    {locations.map((x) => (
+                      <option key={x.id} value={x.id}>
+                        {x.name}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    className="border rounded-xl px-3 py-2"
+                    type="number"
+                    value={classEdit.capacity}
+                    onChange={(e) =>
+                      setClassEdit((v) => ({ ...v, capacity: e.target.value }))
+                    }
+                  />
+                  <input
+                    className="border rounded-xl px-3 py-2"
+                    type="number"
+                    value={classEdit.price}
+                    onChange={(e) =>
+                      setClassEdit((v) => ({ ...v, price: e.target.value }))
+                    }
+                  />
+                  <input
+                    className="border rounded-xl px-3 py-2"
+                    value={classEdit.image_url || ""}
+                    onChange={(e) =>
+                      setClassEdit((v) => ({ ...v, image_url: e.target.value }))
+                    }
+                  />
+                  <input
+                    type="date"
+                    className="border rounded-xl px-3 py-2"
+                    value={classEdit.start_date || ""}
+                    onChange={(e) =>
+                      setClassEdit((v) => ({
+                        ...v,
+                        start_date: e.target.value,
+                      }))
+                    }
+                  />
+                  <input
+                    type="date"
+                    className="border rounded-xl px-3 py-2"
+                    value={classEdit.end_date || ""}
+                    onChange={(e) =>
+                      setClassEdit((v) => ({ ...v, end_date: e.target.value }))
+                    }
+                  />
+                  <textarea
+                    className="md:col-span-2 border rounded-xl px-3 py-2"
+                    value={classEdit.description || ""}
+                    onChange={(e) =>
+                      setClassEdit((v) => ({
+                        ...v,
+                        description: e.target.value,
+                      }))
+                    }
+                  />
+                  <div className="md:col-span-2 flex justify-end gap-3">
+                    <button
+                      onClick={() => {
+                        setClassEditId(null);
+                        setClassEdit(null);
+                      }}
+                      className="px-4 py-2 rounded-xl border"
+                    >
+                      Huỷ
+                    </button>
+                    <button
+                      onClick={saveClass}
+                      className="px-4 py-2 rounded-xl bg-black text-white"
+                    >
+                      Lưu
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div>
+                    <div className="text-lg font-semibold">{c.title}</div>
+                    <div className="text-sm text-gray-500">
+                      HLV: {c.coach_name || "—"} • Sức chứa: {c.capacity ?? "—"}{" "}
+                      • Giá: {c.price ?? "—"}
+                    </div>
+                    <p className="mt-2 text-sm text-gray-600">
+                      {c.description || "Chưa có mô tả"}
+                    </p>
+                  </div>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => startEditClass(c)}
+                      className="px-3 py-2 rounded-xl border"
+                    >
+                      Sửa
+                    </button>
+                    <button
+                      onClick={() => removeClass(c.id)}
+                      className="px-3 py-2 rounded-xl border text-red-600"
+                    >
+                      Xoá
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))
+        )}
+        {!classes.length && !classesLoading && (
+          <div className="rounded-2xl border p-6 text-center text-gray-500">
+            Chưa có lớp.
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  const renderSessions = () => (
+    <div className="space-y-8">
+      <div className="flex items-center justify-between gap-4">
+        <h2 className="text-2xl font-semibold">Buổi học</h2>
+        <select
+          value={selectClassId}
+          onChange={(e) => setSelectClassId(e.target.value)}
+          className="border rounded-xl px-3 py-2"
+        >
+          {classes.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.title}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {/* form */}
+      <form
+        onSubmit={submitSession}
+        className="grid md:grid-cols-4 gap-4 rounded-2xl border p-6 bg-white"
+      >
+        <div className="space-y-2 md:col-span-2">
+          <label className="text-sm font-semibold">Bắt đầu</label>
+          <input
+            type="datetime-local"
+            required
+            value={sesForm.start_time}
+            onChange={(e) =>
+              setSesForm((v) => ({ ...v, start_time: e.target.value }))
+            }
+            className="w-full border rounded-xl px-3 py-2"
+          />
+        </div>
+        <div className="space-y-2 md:col-span-2">
+          <label className="text-sm font-semibold">Kết thúc</label>
+          <input
+            type="datetime-local"
+            required
+            value={sesForm.end_time}
+            onChange={(e) =>
+              setSesForm((v) => ({ ...v, end_time: e.target.value }))
+            }
+            className="w-full border rounded-xl px-3 py-2"
+          />
+        </div>
+        <div className="space-y-2">
+          <label className="text-sm font-semibold">Sức chứa</label>
+          <input
+            type="number"
+            value={sesForm.capacity}
+            onChange={(e) =>
+              setSesForm((v) => ({ ...v, capacity: e.target.value }))
+            }
+            className="w-full border rounded-xl px-3 py-2"
+          />
+        </div>
+        <div className="md:col-span-3 flex justify-end">
+          <button className="px-4 py-2 rounded-xl bg-black text-white">
+            Tạo buổi học
+          </button>
+        </div>
+      </form>
+
+      {/* list */}
+      <div className="rounded-2xl border overflow-hidden bg-white">
+        {sessionsLoading ? (
+          <div className="p-6">Đang tải…</div>
+        ) : (
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="p-3 text-left">Bắt đầu</th>
+                <th className="p-3 text-left">Kết thúc</th>
+                <th className="p-3 text-left">Sức chứa</th>
+                <th className="p-3 text-left">Thao tác</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sessions.map((s) => (
+                <tr key={s.id} className="border-t">
+                  <td className="p-3">
+                    {sesEditId === s.id ? (
                       <input
-                        className="border rounded-xl px-3 py-2"
-                        value={editingLocation.name}
+                        type="datetime-local"
+                        value={sesEdit.start_time}
                         onChange={(e) =>
-                          setEditingLocation((v) => ({
+                          setSesEdit((v) => ({
                             ...v,
-                            name: e.target.value,
+                            start_time: e.target.value,
                           }))
                         }
-                      />
-                      <input
                         className="border rounded-xl px-3 py-2"
-                        value={editingLocation.address || ""}
+                      />
+                    ) : (
+                      fmtDT(s.start_time)
+                    )}
+                  </td>
+                  <td className="p-3">
+                    {sesEditId === s.id ? (
+                      <input
+                        type="datetime-local"
+                        value={sesEdit.end_time}
                         onChange={(e) =>
-                          setEditingLocation((v) => ({
+                          setSesEdit((v) => ({
                             ...v,
-                            address: e.target.value,
+                            end_time: e.target.value,
                           }))
                         }
-                      />
-                      <input
                         className="border rounded-xl px-3 py-2"
+                      />
+                    ) : (
+                      fmtDT(s.end_time)
+                    )}
+                  </td>
+                  <td className="p-3">
+                    {sesEditId === s.id ? (
+                      <input
                         type="number"
-                        value={editingLocation.capacity || ""}
+                        value={sesEdit.capacity}
                         onChange={(e) =>
-                          setEditingLocation((v) => ({
+                          setSesEdit((v) => ({
                             ...v,
                             capacity: e.target.value,
                           }))
                         }
+                        className="border rounded-xl px-3 py-2 w-24"
                       />
-                      <textarea
-                        className="md:col-span-2 border rounded-xl px-3 py-2"
-                        value={editingLocation.notes || ""}
-                        onChange={(e) =>
-                          setEditingLocation((v) => ({
-                            ...v,
-                            notes: e.target.value,
-                          }))
-                        }
-                      />
-                      <div className="md:col-span-2 flex justify-end gap-3">
+                    ) : (
+                      s.capacity ?? "—"
+                    )}
+                  </td>
+                  <td className="p-3 flex flex-wrap gap-2">
+                    {sesEditId === s.id ? (
+                      <>
                         <button
-                          type="button"
-                          onClick={() => {
-                            setEditingLocationId(null);
-                            setEditingLocation(null);
-                          }}
-                          className="px-4 py-2 rounded-xl border"
-                        >
-                          Huỷ
-                        </button>
-                        <button
-                          type="button"
-                          onClick={saveLocation}
-                          className="px-4 py-2 rounded-xl bg-black text-white"
+                          onClick={saveSession}
+                          className="px-3 py-1.5 rounded-xl border bg-black text-white"
                         >
                           Lưu
                         </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex flex-wrap items-start justify-between gap-4">
-                      <div>
-                        <div className="text-lg font-semibold">
-                          {location.name}
-                        </div>
-                        <div className="text-sm text-gray-600">
-                          {location.address || "(chưa có địa chỉ)"}
-                        </div>
-                        <div className="text-sm text-gray-600">
-                          Sức chứa: {location.capacity || "—"}
-                        </div>
-                        <p className="mt-2 text-sm text-gray-600 leading-relaxed">
-                          {location.notes || "Chưa có ghi chú"}
-                        </p>
-                      </div>
-                      <div className="flex gap-3">
                         <button
-                          onClick={() => startEditLocation(location)}
-                          className="px-3 py-2 rounded-xl border"
+                          onClick={() => {
+                            setSesEditId(null);
+                            setSesEdit(null);
+                          }}
+                          className="px-3 py-1.5 rounded-xl border"
                         >
-                          Chỉnh sửa
+                          Huỷ
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          onClick={() => startEditSession(s)}
+                          className="px-3 py-1.5 rounded-xl border"
+                        >
+                          Sửa
                         </button>
                         <button
-                          onClick={() => removeLocation(location.id)}
-                          className="px-3 py-2 rounded-xl border text-red-600"
+                          onClick={() => notifySession(s.id)}
+                          className="px-3 py-1.5 rounded-xl border"
                         >
-                          Xoá
+                          Gửi email nhắc
                         </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
+                      </>
+                    )}
+                    <button
+                      onClick={() => removeSession(s.id)}
+                      className="px-3 py-1.5 rounded-xl border text-red-600"
+                    >
+                      Xoá
+                    </button>
+                  </td>
+                </tr>
               ))}
-              {!locations.length && (
-                <div className="rounded-2xl border p-6 text-center text-gray-500">
-                  Chưa có địa điểm.
+              {!sessions.length && (
+                <tr>
+                  <td className="p-6 text-center text-gray-500" colSpan={4}>
+                    Chưa có buổi.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </div>
+  );
+
+  const renderLocations = () => (
+    <div className="space-y-10">
+      {/* form */}
+      <form
+        onSubmit={submitLocation}
+        className="grid md:grid-cols-2 gap-4 rounded-2xl border p-6 bg-white"
+      >
+        <div className="space-y-2">
+          <label className="text-sm font-semibold">Tên địa điểm</label>
+          <input
+            required
+            value={locForm.name}
+            onChange={(e) =>
+              setLocForm((v) => ({ ...v, name: e.target.value }))
+            }
+            className="w-full border rounded-xl px-3 py-2"
+          />
+        </div>
+        <div className="space-y-2">
+          <label className="text-sm font-semibold">Địa chỉ</label>
+          <input
+            value={locForm.address}
+            onChange={(e) =>
+              setLocForm((v) => ({ ...v, address: e.target.value }))
+            }
+            className="w-full border rounded-xl px-3 py-2"
+          />
+        </div>
+        <div className="space-y-2">
+          <label className="text-sm font-semibold">Sức chứa</label>
+          <input
+            type="number"
+            value={locForm.capacity}
+            onChange={(e) =>
+              setLocForm((v) => ({ ...v, capacity: e.target.value }))
+            }
+            className="w-full border rounded-xl px-3 py-2"
+          />
+        </div>
+        <div className="md:col-span-2 space-y-2">
+          <label className="text-sm font-semibold">Ghi chú</label>
+          <textarea
+            value={locForm.notes}
+            onChange={(e) =>
+              setLocForm((v) => ({ ...v, notes: e.target.value }))
+            }
+            className="w-full border rounded-xl px-3 py-2 min-h-[80px]"
+          />
+        </div>
+        <div className="md:col-span-2 flex justify-end">
+          <button className="px-4 py-2 rounded-xl bg-black text-white">
+            Thêm địa điểm
+          </button>
+        </div>
+      </form>
+
+      {/* list */}
+      <div className="space-y-4">
+        {locLoading ? (
+          <div className="p-6">Đang tải…</div>
+        ) : (
+          locations.map((l) => (
+            <div key={l.id} className="rounded-2xl border p-5 bg-white">
+              {locEdit?.id === l.id ? (
+                <div className="grid md:grid-cols-2 gap-4">
+                  <input
+                    className="border rounded-xl px-3 py-2"
+                    value={locEdit.name}
+                    onChange={(e) =>
+                      setLocEdit((v) => ({ ...v, name: e.target.value }))
+                    }
+                  />
+                  <input
+                    className="border rounded-xl px-3 py-2"
+                    value={locEdit.address || ""}
+                    onChange={(e) =>
+                      setLocEdit((v) => ({ ...v, address: e.target.value }))
+                    }
+                  />
+                  <input
+                    className="border rounded-xl px-3 py-2"
+                    type="number"
+                    value={locEdit.capacity || ""}
+                    onChange={(e) =>
+                      setLocEdit((v) => ({ ...v, capacity: e.target.value }))
+                    }
+                  />
+                  <textarea
+                    className="md:col-span-2 border rounded-xl px-3 py-2"
+                    value={locEdit.notes || ""}
+                    onChange={(e) =>
+                      setLocEdit((v) => ({ ...v, notes: e.target.value }))
+                    }
+                  />
+                  <div className="md:col-span-2 flex justify-end gap-3">
+                    <button
+                      onClick={() => setLocEdit(null)}
+                      className="px-4 py-2 rounded-xl border"
+                    >
+                      Huỷ
+                    </button>
+                    <button
+                      onClick={saveLocation}
+                      className="px-4 py-2 rounded-xl bg-black text-white"
+                    >
+                      Lưu
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <div className="text-lg font-semibold">{l.name}</div>
+                    <div className="text-sm text-gray-600">
+                      {l.address || "—"} • Sức chứa: {l.capacity ?? "—"}
+                    </div>
+                    {l.notes && (
+                      <p className="mt-2 text-sm text-gray-600 whitespace-pre-line">
+                        {l.notes}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => setLocEdit(l)}
+                      className="px-3 py-2 rounded-xl border"
+                    >
+                      Sửa
+                    </button>
+                    <button
+                      onClick={() => removeLocation(l.id)}
+                      className="px-3 py-2 rounded-xl border text-red-600"
+                    >
+                      Xoá
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  function renderEnrollmentsTab() {
-    return (
-      <div>
-        <h2 className="text-2xl font-semibold mb-4">Đăng ký học viên</h2>
-        {enrollmentsLoading ? (
-          <div className="p-6 text-gray-500">Đang tải dữ liệu…</div>
-        ) : (
-          <div className="overflow-x-auto rounded-2xl border">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="p-3 text-left">Học viên</th>
-                  <th className="p-3 text-left">Lớp học</th>
-                  <th className="p-3 text-left">Buổi học</th>
-                  <th className="p-3 text-left">Trạng thái</th>
-                  <th className="p-3 text-left">Thời gian</th>
-                </tr>
-              </thead>
-              <tbody>
-                {enrollments.map((en) => (
-                  <tr key={en.id} className="border-t">
-                    <td className="p-3">
-                      <div className="font-semibold">{en.user_name}</div>
-                      <div className="text-xs text-gray-500">
-                        {en.user_email}
-                      </div>
-                    </td>
-                    <td className="p-3">{en.class_title}</td>
-                    <td className="p-3">{formatDateTime(en.start_time)}</td>
-                    <td className="p-3">
-                      <select
-                        value={en.status}
-                        onChange={(e) =>
-                          updateEnrollmentStatus(en.id, e.target.value)
-                        }
-                        className="border rounded-xl px-3 py-1"
-                      >
-                        <option value="ENROLLED">ENROLLED</option>
-                        <option value="WAITLIST">WAITLIST</option>
-                        <option value="CANCELLED">CANCELLED</option>
-                      </select>
-                    </td>
-                    <td className="p-3 text-gray-500">
-                      {formatDateTime(en.created_at)}
-                    </td>
-                  </tr>
-                ))}
-                {!enrollments.length && (
-                  <tr>
-                    <td className="p-4 text-center text-gray-500" colSpan={5}>
-                      Chưa có đăng ký nào.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+          ))
+        )}
+        {!locations.length && !locLoading && (
+          <div className="rounded-2xl border p-6 text-center text-gray-500">
+            Chưa có địa điểm.
           </div>
         )}
       </div>
-    );
-  }
+    </div>
+  );
 
-  function renderReportsTab() {
-    return (
-      <div className="space-y-6">
-        <div className="rounded-2xl border p-6 bg-white grid md:grid-cols-4 gap-4 items-end">
-          <div>
-            <label className="block text-sm font-semibold">Thống kê theo</label>
-            <select
-              value={reportFilters.by}
-              onChange={(e) =>
-                setReportFilters((v) => ({ ...v, by: e.target.value }))
-              }
-              className="w-full border rounded-xl px-3 py-2"
-            >
-              <option value="class">Lớp học</option>
-              <option value="coach">Huấn luyện viên</option>
-              <option value="location">Địa điểm</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-semibold">Từ ngày</label>
-            <input
-              type="date"
-              value={reportFilters.from}
-              onChange={(e) =>
-                setReportFilters((v) => ({ ...v, from: e.target.value }))
-              }
-              className="w-full border rounded-xl px-3 py-2"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-semibold">Đến ngày</label>
-            <input
-              type="date"
-              value={reportFilters.to}
-              onChange={(e) =>
-                setReportFilters((v) => ({ ...v, to: e.target.value }))
-              }
-              className="w-full border rounded-xl px-3 py-2"
-            />
-          </div>
-          <div className="flex justify-end">
-            <button
-              onClick={loadReport}
-              className="px-4 py-2 rounded-xl border bg-black text-white"
-            >
-              Làm mới
-            </button>
-          </div>
-        </div>
+  const renderEnrollments = () => (
+    <div className="rounded-2xl border overflow-hidden bg-white">
+      {enrollLoading ? (
+        <div className="p-6">Đang tải…</div>
+      ) : (
+        <table className="w-full text-sm">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="p-3 text-left">Mã</th>
+              <th className="p-3 text-left">User</th>
+              <th className="p-3 text-left">Lớp</th>
+              <th className="p-3 text-left">Trạng thái</th>
+              <th className="p-3 text-left">Ngày tạo</th>
+              <th className="p-3 text-left">Thao tác</th>
+            </tr>
+          </thead>
+          <tbody>
+            {enrollments.map((e) => (
+              <tr key={e.id} className="border-t">
+                <td className="p-3">{e.id}</td>
+                <td className="p-3">{e.user_name || e.user_id}</td>
+                <td className="p-3">{e.class_title || e.class_id}</td>
+                <td className="p-3">{e.status}</td>
+                <td className="p-3">{fmtDT(e.created_at)}</td>
+                <td className="p-3">
+                  <select
+                    value={e.status}
+                    onChange={(ev) => updateEnrollStatus(e.id, ev.target.value)}
+                    className="border rounded-lg px-2 py-1"
+                  >
+                    <option value="PENDING_PAYMENT">PENDING_PAYMENT</option>
+                    <option value="PAID">PAID</option>
+                    <option value="CANCELLED">CANCELLED</option>
+                    <option value="REFUNDED">REFUNDED</option>
+                    <option value="WAITLIST">WAITLIST</option>
+                  </select>
+                </td>
+              </tr>
+            ))}
+            {!enrollments.length && (
+              <tr>
+                <td className="p-6 text-center text-gray-500" colSpan={6}>
+                  Chưa có đăng ký.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
 
-        <div className="rounded-2xl border overflow-hidden">
-          {reportLoading ? (
-            <div className="p-6 text-gray-500">Đang tổng hợp dữ liệu…</div>
-          ) : (
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="p-3 text-left">Tên</th>
-                  <th className="p-3 text-left">Số lượt đăng ký</th>
-                </tr>
-              </thead>
-              <tbody>
-                {reportData.map((row) => (
-                  <tr key={row.id} className="border-t">
-                    <td className="p-3 font-medium">{row.name || row.title}</td>
-                    <td className="p-3">{row.enrolls}</td>
-                  </tr>
-                ))}
-                {!reportData.length && (
-                  <tr>
-                    <td className="p-4 text-center text-gray-500" colSpan={2}>
-                      Không có dữ liệu trong khoảng thời gian này.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          )}
+  const renderReports = () => (
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-end gap-3">
+        <div>
+          <div className="text-sm font-semibold">Từ ngày</div>
+          <input
+            type="date"
+            value={reportFilter.from}
+            onChange={(e) =>
+              setReportFilter((v) => ({ ...v, from: e.target.value }))
+            }
+            className="border rounded-xl px-3 py-2"
+          />
         </div>
+        <div>
+          <div className="text-sm font-semibold">Đến ngày</div>
+          <input
+            type="date"
+            value={reportFilter.to}
+            onChange={(e) =>
+              setReportFilter((v) => ({ ...v, to: e.target.value }))
+            }
+            className="border rounded-xl px-3 py-2"
+          />
+        </div>
+        <div>
+          <div className="text-sm font-semibold">Theo</div>
+          <select
+            value={reportFilter.by}
+            onChange={(e) =>
+              setReportFilter((v) => ({ ...v, by: e.target.value }))
+            }
+            className="border rounded-xl px-3 py-2"
+          >
+            <option value="class">Lớp</option>
+            <option value="coach">HLV</option>
+            <option value="day">Ngày</option>
+          </select>
+        </div>
+        <button onClick={loadReport} className="px-4 py-2 rounded-xl border">
+          Làm mới
+        </button>
       </div>
-    );
-  }
 
-  function renderActiveTab() {
-    switch (activeTab) {
-      case "users":
-        return renderUsersTab();
-      case "coaches":
-        return renderCoachesTab();
-      case "classes":
-        return renderClassesTab();
-      case "sessions":
-        return renderSessionsTab();
-      case "locations":
-        return renderLocationsTab();
-      case "enrollments":
-        return renderEnrollmentsTab();
-      case "reports":
-        return renderReportsTab();
-      default:
-        return renderOverviewTab();
-    }
-  }
+      <div className="rounded-2xl border overflow-hidden bg-white">
+        {reportLoading ? (
+          <div className="p-6">Đang tải…</div>
+        ) : (
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50">
+              <tr>
+                {report.length ? (
+                  Object.keys(report[0]).map((k) => (
+                    <th key={k} className="p-3 text-left">
+                      {k}
+                    </th>
+                  ))
+                ) : (
+                  <th className="p-3 text-left">Kết quả</th>
+                )}
+              </tr>
+            </thead>
+            <tbody>
+              {report.length ? (
+                report.map((r, i) => (
+                  <tr key={i} className="border-t">
+                    {Object.keys(r).map((k) => (
+                      <td key={k} className="p-3">
+                        {String(r[k])}
+                      </td>
+                    ))}
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td className="p-6 text-gray-500">Không có dữ liệu</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </div>
+  );
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-10">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold">Bảng điều khiển quản trị</h1>
-          <p className="mt-2 text-sm text-gray-600">
-            Theo dõi toàn bộ hoạt động của hệ thống lớp học cầu lông: tài khoản,
-            lớp học, buổi học và báo cáo thống kê.
-          </p>
-        </div>
-      </div>
+    <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
+      <h1 className="text-3xl font-bold">Bảng điều khiển Admin</h1>
 
-      <div className="mt-8 flex flex-wrap gap-3">
-        {TABS.map((tab) => (
+      <div className="flex flex-wrap gap-2">
+        {TABS.map((t) => (
           <button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
-            className={`px-4 py-2 rounded-xl border text-sm transition ${
-              activeTab === tab.key
-                ? "bg-black text-white border-black"
-                : "bg-white hover:bg-gray-100"
+            key={t.key}
+            onClick={() => setTab(t.key)}
+            className={`px-4 py-2 rounded-xl border ${
+              tab === t.key
+                ? "bg-black text-white"
+                : "bg-white hover:bg-gray-50"
             }`}
           >
-            {tab.label}
+            {t.label}
           </button>
         ))}
       </div>
 
-      <div className="mt-10 space-y-6">{renderActiveTab()}</div>
+      {tab === "overview" && renderOverview()}
+      {tab === "users" && renderUsers()}
+      {tab === "coaches" && renderCoaches()}
+      {tab === "classes" && renderClasses()}
+      {tab === "sessions" && renderSessions()}
+      {tab === "locations" && renderLocations()}
+      {tab === "enrollments" && renderEnrollments()}
+      {tab === "reports" && renderReports()}
     </div>
   );
 }
