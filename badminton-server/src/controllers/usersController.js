@@ -5,6 +5,8 @@ import jwt from "jsonwebtoken";
 import { validationResult } from "express-validator";
 import { sendMail } from "../utils/mailer.js";
 import crypto from "crypto";
+import { ensureUserProfilesTable } from "../utils/schema.js";
+import { push as pushNotification } from "./notificationsController.js";
 
 function makeOtp6() {
   return Math.floor(100000 + Math.random() * 900000).toString();
@@ -263,26 +265,87 @@ export async function loginUser(req, res) {
    =========================== */
 export async function getMe(req, res) {
   try {
-    const [rows] = await pool.query(
-      "SELECT id, name, email, role FROM users WHERE id=?",
+    await ensureUserProfilesTable();
+    const [[user]] = await pool.query(
+      `
+        SELECT u.id,
+               u.name,
+               u.email,
+               u.role,
+               up.phone,
+               up.address,
+               up.date_of_birth,
+               up.gender
+          FROM users u
+          LEFT JOIN user_profiles up ON up.user_id = u.id
+         WHERE u.id=?
+      `,
       [req.user.id]
     );
-    return res.json({ ok: true, data: rows[0] || null });
+    return res.json({ ok: true, data: user || null });
   } catch (e) {
+    console.error("getMe error:", e?.message || e);
     return res.status(500).json({ ok: false, message: "Server error" });
   }
 }
 
 export async function updateMe(req, res) {
-  const { name, phone } = req.body;
+  const errors = validationResult(req);
+  if (!errors.isEmpty())
+    return res.status(400).json({ ok: false, errors: errors.array() });
+
+  const { name, phone, address, date_of_birth, gender } = req.body;
+  const dobValue =
+    typeof date_of_birth === "string" && date_of_birth.trim()
+      ? date_of_birth.slice(0, 10)
+      : null;
+  const genderValue =
+    typeof gender === "string" && gender.trim()
+      ? gender
+      : "UNSPECIFIED";
+  const conn = await pool.getConnection();
   try {
-    await pool.query("UPDATE users SET name = COALESCE(?, name) WHERE id=?", [
-      name ?? null,
+    await ensureUserProfilesTable();
+    await conn.beginTransaction();
+
+    if (typeof name !== "undefined" && name !== null) {
+      await conn.query("UPDATE users SET name=? WHERE id=?", [name, req.user.id]);
+    }
+
+    await conn.query(
+      `
+        INSERT INTO user_profiles (user_id, phone, address, date_of_birth, gender)
+        VALUES (?, ?, ?, ?, ?)
+        ON DUPLICATE KEY UPDATE
+          phone=VALUES(phone),
+          address=VALUES(address),
+          date_of_birth=VALUES(date_of_birth),
+          gender=VALUES(gender)
+      `,
+      [
+        req.user.id,
+        phone ?? null,
+        address ?? null,
+        dobValue,
+        genderValue,
+      ]
+    );
+
+    await conn.commit();
+
+    await pushNotification(
       req.user.id,
-    ]);
+      "Cập nhật hồ sơ",
+      "Thông tin cá nhân của bạn đã được cập nhật thành công."
+    );
+
     return res.json({ ok: true, message: "Cập nhật thành công" });
   } catch (e) {
+    await conn.rollback();
+    console.error("updateMe error:", e?.message || e);
     return res.status(500).json({ ok: false, message: "Server error" });
+  } finally {
+    conn.release();
   }
 }
 

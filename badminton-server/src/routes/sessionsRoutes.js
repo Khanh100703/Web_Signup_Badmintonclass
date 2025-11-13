@@ -5,6 +5,8 @@ import {
   updateSession,
   deleteSession,
   notifyParticipants,
+  registerForSession,
+  mySessionBookingsByClass,
 } from "../controllers/sessionsController.js";
 import { requireAuth, requireRole } from "../middlewares/auth.js";
 import { body } from "express-validator";
@@ -12,6 +14,11 @@ import { body } from "express-validator";
 const router = Router();
 
 router.get("/class/:classId", listSessionsByClass);
+router.get(
+  "/class/:classId/my-bookings",
+  requireAuth,
+  mySessionBookingsByClass
+);
 
 router.post(
   "/",
@@ -29,6 +36,8 @@ router.post(
   requireRole(["ADMIN", "COACH"]),
   notifyParticipants
 );
+
+router.post("/:id/book", requireAuth, registerForSession);
 
 router.put("/:id", requireAuth, requireRole(["ADMIN"]), updateSession);
 router.delete("/:id", requireAuth, requireRole(["ADMIN"]), deleteSession);

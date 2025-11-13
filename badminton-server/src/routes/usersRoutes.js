@@ -55,6 +55,11 @@ router.put(
   requireAuth,
   body("name").optional().isString(),
   body("phone").optional().isString(),
+  body("address").optional().isString(),
+  body("date_of_birth").optional().isISO8601(),
+  body("gender")
+    .optional()
+    .isIn(["MALE", "FEMALE", "OTHER", "UNSPECIFIED"]),
   updateMe
 );
 // Quên mật khẩu: gửi OTP về email (hoặc trả về dev_otp nếu chưa cấu hình SMTP)
