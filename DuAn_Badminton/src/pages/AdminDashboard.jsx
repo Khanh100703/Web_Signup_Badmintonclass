@@ -135,7 +135,8 @@ export default function AdminDashboard() {
   }, [tab]);
   useEffect(() => {
     if (tab === "reports") loadReport();
-  }, [tab, reportFilter, loadReport]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, reportFilter]);
 
   // ===== API loaders =====
   async function loadUsers() {
@@ -213,7 +214,7 @@ export default function AdminDashboard() {
       setEnrollLoading(false);
     }
   }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+
   async function loadReport() {
     setReportLoading(true);
     try {
