@@ -4,6 +4,7 @@ const ensured = {
   userProfiles: false,
   passwordOtps: false,
   payments: false,
+  sessionBookings: false,
 };
 
 export async function ensureUserProfilesTable() {
@@ -61,4 +62,26 @@ export async function ensurePaymentsTable() {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
   `);
   ensured.payments = true;
+}
+
+export async function ensureSessionBookingsTable() {
+  if (ensured.sessionBookings) return;
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS session_bookings (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      session_id INT NOT NULL,
+      class_id INT NOT NULL,
+      user_id INT NOT NULL,
+      status ENUM('BOOKED','CANCELLED') NOT NULL DEFAULT 'BOOKED',
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      CONSTRAINT fk_session_bookings_session FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE,
+      CONSTRAINT fk_session_bookings_class FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE CASCADE,
+      CONSTRAINT fk_session_bookings_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+      UNIQUE KEY uq_session_book (session_id, user_id),
+      INDEX idx_session_book_user (user_id),
+      INDEX idx_session_book_status (status)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+  `);
+  ensured.sessionBookings = true;
 }

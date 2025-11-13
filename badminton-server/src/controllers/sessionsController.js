@@ -1,5 +1,6 @@
 import * as sessionsModel from "../models/sessionsModel.js";
 import { pool } from "../db.js";
+import { ensureSessionBookingsTable } from "../utils/schema.js";
 import { push as pushNotification } from "./notificationsController.js";
 
 function formatDateTime(value) {
@@ -194,5 +195,171 @@ export async function notifyParticipants(req, res) {
       message: "Lỗi gửi thông báo",
       error: err.message,
     });
+  }
+}
+
+export async function registerForSession(req, res) {
+  const sessionId = Number(req.params.id);
+  if (!sessionId)
+    return res.status(400).json({ ok: false, message: "Buổi học không hợp lệ" });
+
+  const userId = req.user.id;
+  const conn = await pool.getConnection();
+
+  try {
+    await ensureSessionBookingsTable();
+    await conn.beginTransaction();
+
+    const [[sessionRow]] = await conn.query(
+      `SELECT s.id, s.class_id, s.start_time, s.end_time, s.capacity, c.title AS class_title
+         FROM sessions s
+         JOIN classes c ON c.id = s.class_id
+        WHERE s.id = ?
+        FOR UPDATE`,
+      [sessionId]
+    );
+
+    if (!sessionRow) {
+      await conn.rollback();
+      return res
+        .status(404)
+        .json({ ok: false, message: "Không tìm thấy buổi học" });
+    }
+
+    const [[classEnrollment]] = await conn.query(
+      `SELECT id, status
+         FROM enrollments
+        WHERE user_id=? AND class_id=?
+        ORDER BY created_at DESC
+        LIMIT 1
+        FOR UPDATE`,
+      [userId, sessionRow.class_id]
+    );
+
+    if (!classEnrollment || classEnrollment.status !== "PAID") {
+      await conn.rollback();
+      return res.status(400).json({
+        ok: false,
+        message: "Hãy hoàn tất thanh toán khóa học trước khi đăng ký buổi học.",
+      });
+    }
+
+    const [[existing]] = await conn.query(
+      `SELECT id, status
+         FROM session_bookings
+        WHERE session_id=? AND user_id=?
+        FOR UPDATE`,
+      [sessionId, userId]
+    );
+
+    if (existing?.status === "BOOKED") {
+      await conn.rollback();
+      return res
+        .status(409)
+        .json({ ok: false, message: "Bạn đã đăng ký buổi học này" });
+    }
+
+    if (sessionRow.start_time) {
+      const [sameDay] = await conn.query(
+        `SELECT sb.session_id
+           FROM session_bookings sb
+           JOIN sessions s ON s.id = sb.session_id
+          WHERE sb.user_id=?
+            AND DATE(s.start_time) = DATE(?)
+            AND sb.status = 'BOOKED'
+          FOR UPDATE`,
+        [userId, sessionRow.start_time]
+      );
+
+      const conflict = sameDay.find(
+        (row) => Number(row.session_id) !== Number(sessionId)
+      );
+      if (conflict) {
+        await conn.rollback();
+        return res.status(409).json({
+          ok: false,
+          message: "Bạn đã đăng ký một buổi khác trong ngày này.",
+        });
+      }
+    }
+
+    if (sessionRow.capacity != null) {
+      const [[countRow]] = await conn.query(
+        `SELECT COUNT(*) AS cnt
+           FROM session_bookings
+          WHERE session_id=?
+            AND status='BOOKED'
+          FOR UPDATE`,
+        [sessionId]
+      );
+      if (Number(countRow.cnt || 0) >= Number(sessionRow.capacity || 0)) {
+        await conn.rollback();
+        return res
+          .status(409)
+          .json({ ok: false, message: "Buổi học đã đủ chỗ" });
+      }
+    }
+
+    if (existing) {
+      await conn.query(
+        `UPDATE session_bookings SET status='BOOKED', updated_at=NOW() WHERE id=?`,
+        [existing.id]
+      );
+    } else {
+      await conn.query(
+        `INSERT INTO session_bookings (session_id, class_id, user_id, status)
+         VALUES (?, ?, ?, 'BOOKED')`,
+        [sessionId, sessionRow.class_id, userId]
+      );
+    }
+
+    await conn.commit();
+
+    const startLabel = formatDateTime(sessionRow.start_time);
+    try {
+      await pushNotification(
+        userId,
+        sessionRow.class_title
+          ? `Đăng ký buổi học: ${sessionRow.class_title}`
+          : "Đăng ký buổi học",
+        `Bạn đã đăng ký thành công buổi học diễn ra vào ${startLabel}. Hẹn gặp bạn trên sân!`
+      );
+    } catch (notifyErr) {
+      console.error("registerForSession pushNotification", notifyErr);
+    }
+
+    return res.json({
+      ok: true,
+      message: "Đăng ký buổi học thành công",
+      data: { session_id: sessionId },
+    });
+  } catch (err) {
+    await conn.rollback();
+    console.error("registerForSession error:", err);
+    return res.status(500).json({ ok: false, message: "Server error" });
+  } finally {
+    conn.release();
+  }
+}
+
+export async function mySessionBookingsByClass(req, res) {
+  const classId = Number(req.params.classId);
+  if (!classId)
+    return res.status(400).json({ ok: false, message: "Class không hợp lệ" });
+
+  try {
+    await ensureSessionBookingsTable();
+    const [rows] = await pool.query(
+      `SELECT sb.session_id, sb.status, sb.created_at
+         FROM session_bookings sb
+         JOIN sessions s ON s.id = sb.session_id
+        WHERE sb.user_id = ? AND s.class_id = ?
+        ORDER BY s.start_time ASC`,
+      [req.user.id, classId]
+    );
+    return res.json({ ok: true, data: rows });
+  } catch (err) {
+    console.error("mySessionBookingsByClass error:", err);
+    return res.status(500).json({ ok: false, message: "Server error" });
   }
 }

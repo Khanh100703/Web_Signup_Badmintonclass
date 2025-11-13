@@ -228,7 +228,7 @@ export async function confirmCheckout(req, res) {
         "Thanh toán thành công",
         `Bạn đã thanh toán ${classTitle} thành công (${formatCurrency(
           Number(pay.amount || 0)
-        )}).`
+        )}). Đừng quên đăng ký buổi học phù hợp trong lịch lớp nhé!`
       );
 
       await conn.commit();

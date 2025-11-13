@@ -78,7 +78,7 @@ export default function CheckoutPage() {
         addNotification({
           title: "Thanh toán",
           body: success
-            ? "Bạn đã thanh toán thành công khóa học. Hẹn gặp lại trên sân!"
+            ? "Bạn đã thanh toán thành công khóa học. Đừng quên chọn buổi học phù hợp trong lịch buổi học nhé!"
             : "Thanh toán thất bại. Hãy thử lại hoặc chọn phương thức khác.",
         });
         fetchNotifications();

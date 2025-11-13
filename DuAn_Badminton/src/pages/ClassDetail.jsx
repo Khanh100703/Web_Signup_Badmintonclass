@@ -1,22 +1,28 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
 import { api } from "../services/api.js";
 import { useAuth } from "../hooks/useAuth.js";
+import { useNotifications } from "../contexts/NotificationContext.jsx";
 
 export default function ClassDetail() {
   const { id } = useParams();
   const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const { addNotification, fetchNotifications } = useNotifications();
 
   const [clazz, setClazz] = useState(null);
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
-  const [enrolledThisClass, setEnrolledThisClass] = useState(false);
+  const [classEnrollment, setClassEnrollment] = useState(null);
 
   // 👉 thêm state chọn ngày
   const [selectedDate, setSelectedDate] = useState("");
+  const [bookingMap, setBookingMap] = useState({});
+  const [bookingBusyId, setBookingBusyId] = useState(null);
+  const [bookingMessage, setBookingMessage] = useState("");
+  const [bookingError, setBookingError] = useState("");
 
   const capacity = clazz?.capacity ?? null;
   const price = clazz?.price ?? null;
@@ -47,17 +53,15 @@ export default function ClassDetail() {
           try {
             const r = await api.get(`/api/enrollments/my`);
             const arr = Array.isArray(r?.data) ? r.data : [];
-            const enrolled = arr.some(
-              (e) =>
-                Number(e.class_id) === Number(id) &&
-                ["PENDING_PAYMENT", "PAID", "WAITLIST"].includes(e.status)
+            const enrollment = arr.find(
+              (e) => Number(e.class_id) === Number(id)
             );
-            if (mounted) setEnrolledThisClass(enrolled);
+            if (mounted) setClassEnrollment(enrollment || null);
           } catch {
-            if (mounted) setEnrolledThisClass(false);
+            if (mounted) setClassEnrollment(null);
           }
         } else {
-          setEnrolledThisClass(false);
+          setClassEnrollment(null);
         }
       } catch (e) {
         if (mounted) setErr(e?.message || "Không tải được chi tiết lớp");
@@ -70,6 +74,51 @@ export default function ClassDetail() {
     };
   }, [id, user]);
 
+  useEffect(() => {
+    if (!user || classEnrollment?.status !== "PAID") {
+      setBookingMap({});
+      setBookingMessage("");
+      setBookingError("");
+      return;
+    }
+
+    let active = true;
+    const loadBookings = async () => {
+      setBookingMessage("");
+      setBookingError("");
+      try {
+        const res = await api.get(
+          `/api/sessions/class/${id}/my-bookings`
+        );
+        if (!active) return;
+        if (res?.ok) {
+          const list = Array.isArray(res?.data) ? res.data : [];
+          const nextMap = {};
+          for (const item of list) {
+            if (item?.session_id) {
+              nextMap[item.session_id] = item.status || "BOOKED";
+            }
+          }
+          setBookingMap(nextMap);
+        } else {
+          setBookingError(
+            res?.message || "Không thể tải danh sách buổi đã đăng ký"
+          );
+        }
+      } catch (error) {
+        if (active)
+          setBookingError(
+            error?.message || "Không thể tải danh sách buổi đã đăng ký"
+          );
+      }
+    };
+
+    loadBookings();
+    return () => {
+      active = false;
+    };
+  }, [user, id, classEnrollment?.status]);
+
   function handleCheckout() {
     if (!user) {
       navigate("/login", { state: { from: location.pathname } });
@@ -77,6 +126,42 @@ export default function ClassDetail() {
     }
     navigate(`/classes/${id}/checkout`);
   }
+
+  const handleBookSession = async (sessionId) => {
+    if (!sessionId || !showSessionBooking) return;
+    setBookingBusyId(sessionId);
+    setBookingError("");
+    setBookingMessage("");
+    try {
+      const res = await api.post(`/api/sessions/${sessionId}/book`);
+      if (res?.ok) {
+        setBookingMap((prev) => ({ ...prev, [sessionId]: "BOOKED" }));
+        const target = sessions.find(
+          (s) => Number(s.id) === Number(sessionId)
+        );
+        const whenLabel = target?.start_time
+          ? new Date(target.start_time).toLocaleString("vi-VN", {
+              hour12: false,
+            })
+          : "";
+        const successMsg = res?.message || "Đăng ký buổi học thành công";
+        setBookingMessage(whenLabel ? `${successMsg} (${whenLabel})` : successMsg);
+        addNotification({
+          title: "Đăng ký buổi học",
+          body: whenLabel
+            ? `Bạn đã đăng ký buổi học vào ${whenLabel}. Hẹn gặp bạn trên sân!`
+            : "Bạn đã đăng ký tham gia một buổi học.",
+        });
+        fetchNotifications();
+      } else {
+        setBookingError(res?.message || "Không thể đăng ký buổi học");
+      }
+    } catch (error) {
+      setBookingError(error?.message || "Không thể đăng ký buổi học");
+    } finally {
+      setBookingBusyId(null);
+    }
+  };
 
   if (loading)
     return <div className="max-w-6xl mx-auto px-4 py-10">Đang tải…</div>;
@@ -93,14 +178,21 @@ export default function ClassDetail() {
 
   const seatsLeft =
     typeof clazz.seats_remaining === "number" ? clazz.seats_remaining : null;
-  const canEnroll = !enrolledThisClass && (seatsLeft === null || seatsLeft > 0);
-  const primaryButtonLabel = !user
-    ? "Đăng nhập để tham gia"
-    : enrolledThisClass
-    ? "Bạn đã đăng ký"
-    : seatsLeft !== null && seatsLeft <= 0
-    ? "Đã hết chỗ"
-    : "Thanh toán & tham gia";
+  const enrollmentStatus = classEnrollment?.status || null;
+  const hasEnrollment = Boolean(classEnrollment);
+  const canEnroll =
+    (!hasEnrollment && (seatsLeft === null || seatsLeft > 0)) ||
+    enrollmentStatus === "PENDING_PAYMENT";
+  const primaryButtonLabel = useMemo(() => {
+    if (!user) return "Đăng nhập để tham gia";
+    if (enrollmentStatus === "PAID") return "Bạn đã thanh toán";
+    if (enrollmentStatus === "PENDING_PAYMENT") return "Hoàn tất thanh toán";
+    if (enrollmentStatus === "WAITLIST") return "Bạn đang trong danh sách chờ";
+    if (hasEnrollment) return "Bạn đã đăng ký";
+    if (seatsLeft !== null && seatsLeft <= 0) return "Đã hết chỗ";
+    return "Thanh toán & tham gia";
+  }, [user, enrollmentStatus, hasEnrollment, seatsLeft]);
+  const showSessionBooking = Boolean(user) && enrollmentStatus === "PAID";
 
   // 👉 lọc buổi theo ngày
   const visibleSessions = !selectedDate
@@ -246,11 +338,20 @@ export default function ClassDetail() {
               </div>
 
               <div className="mt-4 overflow-x-auto">
+                {showSessionBooking && (
+                  <p className="mb-3 text-xs font-medium text-emerald-600">
+                    Bạn có thể đăng ký tối đa một buổi học cho mỗi ngày. Hãy chọn
+                    lịch phù hợp với mình!
+                  </p>
+                )}
                 <table className="w-full min-w-[320px] text-sm">
                   <thead>
                     <tr className="bg-blue-50 text-left text-xs uppercase tracking-[0.2em] text-blue-500">
                       <th className="px-4 py-3">Bắt đầu</th>
                       <th className="px-4 py-3">Kết thúc</th>
+                      {showSessionBooking && (
+                        <th className="px-4 py-3 text-right">Đăng ký</th>
+                      )}
                     </tr>
                   </thead>
                   <tbody>
@@ -273,11 +374,34 @@ export default function ClassDetail() {
                               })
                             : "—"}
                         </td>
+                        {showSessionBooking && (
+                          <td className="px-4 py-3 text-right">
+                            {bookingMap?.[session.id] === "BOOKED" ? (
+                              <span className="inline-flex items-center justify-center rounded-xl bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">
+                                Đã đăng ký
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => handleBookSession(session.id)}
+                                disabled={bookingBusyId === session.id}
+                                className="inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-emerald-500 to-blue-600 px-4 py-2 text-xs font-semibold text-white shadow transition hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-60"
+                              >
+                                {bookingBusyId === session.id
+                                  ? "Đang đăng ký..."
+                                  : "Đăng ký buổi này"}
+                              </button>
+                            )}
+                          </td>
+                        )}
                       </tr>
                     ))}
                     {!visibleSessions.length && (
                       <tr>
-                        <td className="px-4 py-4 text-center text-sm text-slate-400" colSpan={2}>
+                        <td
+                          className="px-4 py-4 text-center text-sm text-slate-400"
+                          colSpan={showSessionBooking ? 3 : 2}
+                        >
                           {selectedDate
                             ? "Không có buổi học nào trong ngày đã chọn"
                             : "Lịch học đang được cập nhật."}
@@ -286,6 +410,16 @@ export default function ClassDetail() {
                     )}
                   </tbody>
                 </table>
+                {showSessionBooking && bookingMessage && (
+                  <p className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs font-medium text-emerald-700">
+                    {bookingMessage}
+                  </p>
+                )}
+                {showSessionBooking && bookingError && (
+                  <p className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs font-medium text-rose-600">
+                    {bookingError}
+                  </p>
+                )}
               </div>
             </div>
           </div>
