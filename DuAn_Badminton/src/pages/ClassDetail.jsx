@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { api } from "../services/api.js";
 import { useAuth } from "../hooks/useAuth.js";
@@ -14,18 +14,17 @@ export default function ClassDetail() {
   const [enrolling, setEnrolling] = useState(false);
   const [enrolledThisClass, setEnrolledThisClass] = useState(false);
 
-  const capacity = useMemo(() => clazz?.capacity ?? null, [clazz]);
-  const price = useMemo(() => clazz?.price ?? null, [clazz]);
-  const level = useMemo(
-    () => clazz?.level ?? clazz?.level?.name ?? null,
-    [clazz]
-  );
+  // 👉 thêm state chọn ngày
+  const [selectedDate, setSelectedDate] = useState("");
+
+  const capacity = clazz?.capacity ?? null;
+  const price = clazz?.price ?? null;
+  const level = clazz?.level?.name ?? clazz?.level ?? null;
 
   useEffect(() => {
     let mounted = true;
     (async () => {
       try {
-        // Backend wrapper fetch: { ok:true, data:{...} }
         const res1 = await api.get(`/api/classes/${id}`);
         const c = res1?.data ?? null;
         if (!c) throw new Error("Không tìm thấy lớp học");
@@ -99,6 +98,17 @@ export default function ClassDetail() {
     typeof clazz.seats_remaining === "number" ? clazz.seats_remaining : null;
   const canEnroll =
     !!user && !enrolledThisClass && (seatsLeft === null || seatsLeft > 0);
+
+  // 👉 lọc buổi theo ngày
+  const visibleSessions = !selectedDate
+    ? sessions
+    : sessions.filter((s) => {
+        if (!s?.start_time) return false;
+        const d = new Date(s.start_time);
+        if (Number.isNaN(d.getTime())) return false;
+        const dateStr = d.toISOString().slice(0, 10); // yyyy-mm-dd
+        return dateStr === selectedDate;
+      });
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-10 grid lg:grid-cols-3 gap-4">
@@ -177,7 +187,32 @@ export default function ClassDetail() {
 
         {/* LỊCH BUỔI */}
         <div className="mt-8 rounded-2xl border overflow-x-auto">
-          <table className="w-full text-sm">
+          {/* 👉 thanh filter ngày */}
+          <div className="flex items-center justify-between gap-4 px-4 pt-4">
+            <div className="text-sm font-semibold">Lịch buổi học</div>
+            <div className="flex items-center gap-2">
+              <label className="text-sm text-gray-600 flex items-center gap-2">
+                <span>Chọn ngày:</span>
+                <input
+                  type="date"
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  className="border rounded-lg px-2 py-1 text-sm"
+                />
+              </label>
+              {selectedDate && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedDate("")}
+                  className="text-xs px-2 py-1 rounded-lg border bg-white hover:bg-gray-50"
+                >
+                  Xoá lọc
+                </button>
+              )}
+            </div>
+          </div>
+
+          <table className="w-full text-sm mt-2">
             <thead className="bg-gray-50">
               <tr>
                 <th className="text-left p-3">Bắt đầu</th>
@@ -185,7 +220,7 @@ export default function ClassDetail() {
               </tr>
             </thead>
             <tbody>
-              {sessions.map((s) => (
+              {visibleSessions.map((s) => (
                 <tr key={s.id} className="border-t">
                   <td className="p-3">
                     {s?.start_time
@@ -199,10 +234,12 @@ export default function ClassDetail() {
                   </td>
                 </tr>
               ))}
-              {!sessions.length && (
+              {!visibleSessions.length && (
                 <tr>
                   <td className="p-3 text-gray-500" colSpan={2}>
-                    Chưa có lịch cho khóa này
+                    {selectedDate
+                      ? "Không có buổi học nào trong ngày đã chọn"
+                      : "Chưa có lịch cho khóa này"}
                   </td>
                 </tr>
               )}
