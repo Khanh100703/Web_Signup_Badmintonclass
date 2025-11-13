@@ -4,9 +4,7 @@ import { api } from "../services/api.js";
 function formatDateTime(value) {
   if (!value) return "—";
   try {
-    return new Date(value).toLocaleString("vi-VN", {
-      hour12: false,
-    });
+    return new Date(value).toLocaleString("vi-VN", { hour12: false });
   } catch {
     return value;
   }
@@ -91,74 +89,51 @@ export default function CoachClasses() {
               : "Danh sách lớp học mà bạn đang phụ trách."}
           </p>
         </div>
-        <div className="rounded-2xl border bg-white shadow-sm hover:shadow-md transition">
-          Tổng cộng <b>{classCount}</b> lớp học
+        <div className="rounded-2xl border px-4 py-2 bg-white">
+          <div className="text-xs text-gray-500">Tổng số lớp</div>
+          <div className="text-xl font-semibold">{classCount}</div>
         </div>
       </div>
 
-      {!data.length && (
-        <div className="mt-12 rounded-2xl border p-8 text-center text-gray-500">
-          Hiện tại bạn chưa được phân công lớp học nào.
-        </div>
-      )}
-
-      <div className="mt-10 space-y-8">
+      <div className="mt-8 space-y-6">
         {data.map((clazz) => (
-          <div key={clazz.id} className="rounded-2xl border bg-white shadow-sm">
-            <div className="grid md:grid-cols-5 gap-6 p-6">
-              <div className="md:col-span-2">
-                <div className="aspect-video rounded-xl overflow-hidden bg-gray-100">
-                  {clazz.image_url ? (
-                    <img
-                      src={clazz.image_url}
-                      alt={clazz.title}
-                      className="h-full w-full object-cover animate-fadeIn"
-                      loading="lazy"
-                    />
-                  ) : (
-                    <div className="h-full w-full grid place-items-center text-gray-400 text-sm">
-                      Hình ảnh đang cập nhật
-                    </div>
-                  )}
-                </div>
-                <div className="mt-4 text-sm text-gray-500 space-y-1">
+          <div
+            key={clazz.id}
+            className="rounded-2xl border bg-white overflow-hidden"
+          >
+            <div className="grid md:grid-cols-[2fr,3fr] gap-0">
+              <div className="p-6 border-b md:border-b-0 md:border-r">
+                <h2 className="text-xl font-semibold">{clazz.title}</h2>
+                <p className="mt-2 text-sm text-gray-600">
+                  {clazz.description || "Chưa có mô tả cho lớp này."}
+                </p>
+                <div className="mt-4 text-sm text-gray-600 space-y-1">
                   <div>
-                    <span className="font-semibold text-gray-700">
-                      Địa điểm:
-                    </span>{" "}
+                    <span className="font-semibold">Địa điểm:</span>{" "}
                     {clazz.location_name || "Đang cập nhật"}
                   </div>
-                  {clazz.level_name && (
-                    <div>
-                      <span className="font-semibold text-gray-700">
-                        Trình độ:
-                      </span>{" "}
-                      {clazz.level_name}
-                    </div>
-                  )}
                   <div>
-                    <span className="font-semibold text-gray-700">
-                      Sức chứa:
-                    </span>{" "}
-                    {clazz.class_capacity || "—"}
+                    <span className="font-semibold">Trình độ:</span>{" "}
+                    {clazz.level_name || "Mọi trình độ"}
+                  </div>
+                  <div>
+                    <span className="font-semibold">Sức chứa:</span>{" "}
+                    {clazz.class_capacity || "—"} học viên
+                  </div>
+                  <div>
+                    <span className="font-semibold">Ước tính còn:</span>{" "}
+                    {clazz.remaining_estimate ?? "—"} chỗ
                   </div>
                 </div>
               </div>
-              <div className="md:col-span-3 flex flex-col">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <h2 className="text-2xl font-semibold">{clazz.title}</h2>
-                    <p className="mt-2 text-sm text-gray-600 leading-relaxed whitespace-pre-line">
-                      {clazz.description ||
-                        "Khóa học cầu lông đang chờ bạn cập nhật mô tả chi tiết."}
-                    </p>
-                  </div>
-                  <span className="px-3 py-1 rounded-full bg-blue-50 text-blue-600 text-xs font-semibold">
-                    {clazz.remaining_estimate ?? "—"} chỗ trống ước tính
-                  </span>
-                </div>
 
-                <div className="mt-6 rounded-2xl border overflow-hidden">
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-sm font-semibold text-gray-700">
+                    Các buổi học
+                  </h3>
+                </div>
+                <div className="rounded-2xl border overflow-hidden">
                   <table className="w-full text-sm">
                     <thead className="bg-gray-50">
                       <tr>
@@ -195,7 +170,10 @@ export default function CoachClasses() {
                       ))}
                       {!clazz.sessions?.length && (
                         <tr>
-                          <td className="p-3 text-gray-500" colSpan={4}>
+                          <td
+                            className="p-3 text-gray-500 text-center"
+                            colSpan={4}
+                          >
                             Chưa có buổi học nào được tạo.
                           </td>
                         </tr>
@@ -207,6 +185,11 @@ export default function CoachClasses() {
             </div>
           </div>
         ))}
+        {!data.length && (
+          <div className="rounded-2xl border p-6 text-center text-gray-500 bg-white">
+            Bạn chưa được phân công lớp nào.
+          </div>
+        )}
       </div>
     </div>
   );

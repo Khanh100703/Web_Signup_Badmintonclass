@@ -38,11 +38,9 @@ export async function getClasses(filters = {}) {
       -- chỗ trống: tổng capacity class - tổng số đã enroll trong tương lai (ước lượng)
       (COALESCE(c.capacity, 0) - COALESCE((
           SELECT COUNT(e.id)
-          FROM sessions s 
-          JOIN enrollments e ON e.session_id = s.id
-          WHERE s.class_id = c.id
-            AND e.status = 'ENROLLED'
-            AND s.start_time > NOW()
+          FROM enrollments e
+          WHERE e.class_id = c.id
+            AND e.status IN ('PAID', 'PENDING_PAYMENT', 'WAITLIST')
       ), 0)) AS remaining_estimate
     FROM classes c
     LEFT JOIN coaches co ON co.id = c.coach_id
