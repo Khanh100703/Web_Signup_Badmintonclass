@@ -1,4 +1,11 @@
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { api } from "../services/api.js";
 import { useAuth } from "../hooks/useAuth.js";
 
@@ -8,10 +15,12 @@ export function NotificationProvider({ children }) {
   const { user } = useAuth();
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(false);
+  const userId = user?.id;
 
-  const fetchNotifications = async () => {
-    if (!user) {
+  const fetchNotifications = useCallback(async () => {
+    if (!userId) {
       setNotifications([]);
+      setLoading(false);
       return;
     }
     setLoading(true);
@@ -24,15 +33,14 @@ export function NotificationProvider({ children }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [userId]);
 
   useEffect(() => {
-    if (user) fetchNotifications();
+    if (userId) fetchNotifications();
     else setNotifications([]);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id]);
+  }, [userId, fetchNotifications]);
 
-  const addNotification = (notif) => {
+  const addNotification = useCallback((notif) => {
     setNotifications((prev) => {
       const next = [
         {
@@ -46,21 +54,24 @@ export function NotificationProvider({ children }) {
       ];
       return next.slice(0, 10);
     });
-  };
+  }, []);
 
-  const markAsRead = async (ids) => {
-    if (!user || !Array.isArray(ids) || !ids.length) return;
-    try {
-      await api.post("/api/me/notifications/read", { ids });
-      setNotifications((prev) =>
-        prev.map((item) =>
-          ids.includes(item.id) ? { ...item, is_read: true } : item
-        )
-      );
-    } catch (err) {
-      console.error("markAsRead", err);
-    }
-  };
+  const markAsRead = useCallback(
+    async (ids) => {
+      if (!userId || !Array.isArray(ids) || !ids.length) return;
+      try {
+        await api.post("/api/me/notifications/read", { ids });
+        setNotifications((prev) =>
+          prev.map((item) =>
+            ids.includes(item.id) ? { ...item, is_read: true } : item
+          )
+        );
+      } catch (err) {
+        console.error("markAsRead", err);
+      }
+    },
+    [userId]
+  );
 
   const value = useMemo(
     () => ({
@@ -70,7 +81,7 @@ export function NotificationProvider({ children }) {
       addNotification,
       markAsRead,
     }),
-    [notifications, loading]
+    [notifications, loading, fetchNotifications, addNotification, markAsRead]
   );
 
   return (

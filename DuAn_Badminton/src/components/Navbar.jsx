@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth.js";
 import { useNotifications } from "../contexts/NotificationContext.jsx";
@@ -51,7 +51,7 @@ function UserIcon() {
 
 export default function Navbar() {
   const { user, logout } = useAuth();
-  const { notifications, markAsRead } = useNotifications();
+  const { notifications, markAsRead, fetchNotifications } = useNotifications();
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
@@ -59,9 +59,13 @@ export default function Navbar() {
   const notifRef = useRef(null);
   const navigate = useNavigate();
 
-  const unreadIds = notifications
-    .filter((item) => !item.is_read && !String(item.id).startsWith("local-"))
-    .map((item) => item.id);
+  const unreadIds = useMemo(
+    () =>
+      notifications
+        .filter((item) => !item.is_read && !String(item.id).startsWith("local-"))
+        .map((item) => item.id),
+    [notifications]
+  );
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 10);
@@ -83,10 +87,24 @@ export default function Navbar() {
   }, []);
 
   const onToggleNotif = () => {
-    const next = !notifOpen;
-    setNotifOpen(next);
-    if (next && unreadIds.length) markAsRead(unreadIds);
+    if (notifOpen) {
+      setNotifOpen(false);
+      return;
+    }
+    fetchNotifications()
+      .catch((err) => {
+        console.error("fetchNotifications error:", err);
+      })
+      .finally(() => {
+        setNotifOpen(true);
+      });
   };
+
+  useEffect(() => {
+    if (notifOpen && unreadIds.length) {
+      markAsRead(unreadIds);
+    }
+  }, [notifOpen, unreadIds, markAsRead]);
 
   return (
     <header
@@ -94,7 +112,7 @@ export default function Navbar() {
         scrolled ? "shadow-lg" : "shadow-md"
       }`}
     >
-      <div className="relative overflow-hidden">
+      <div className="relative overflow-visible">
         <div className="absolute inset-0 bg-gradient-to-r from-blue-700 via-emerald-600 to-blue-700" />
         <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.4),_transparent_55%)]" />
         <div className="relative max-w-6xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
@@ -187,7 +205,7 @@ export default function Navbar() {
                     </span>
                   )}
                   {notifOpen && (
-                    <div className="absolute right-0 top-11 w-72 rounded-2xl bg-white/95 backdrop-blur shadow-xl ring-1 ring-blue-100/80 p-3 text-left">
+                    <div className="absolute right-0 top-11 z-50 w-72 rounded-2xl bg-white/95 backdrop-blur shadow-xl ring-1 ring-blue-100/80 p-3 text-left">
                       <p className="text-xs font-semibold uppercase tracking-widest text-emerald-600">
                         Thông báo gần đây
                       </p>
@@ -252,7 +270,7 @@ export default function Navbar() {
                     </svg>
                   </button>
                   {menuOpen && (
-                    <div className="absolute right-0 mt-3 w-52 rounded-2xl bg-white p-3 shadow-xl ring-1 ring-emerald-100">
+                    <div className="absolute right-0 z-50 mt-3 w-52 rounded-2xl bg-white p-3 shadow-xl ring-1 ring-emerald-100">
                       <button
                         type="button"
                         onClick={() => {

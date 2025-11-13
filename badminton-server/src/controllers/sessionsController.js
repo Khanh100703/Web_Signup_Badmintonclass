@@ -1,6 +1,6 @@
 import * as sessionsModel from "../models/sessionsModel.js";
 import { pool } from "../db.js";
-import { sendMail } from "../utils/mailer.js";
+import { push as pushNotification } from "./notificationsController.js";
 
 function formatDateTime(value) {
   if (!value) return "Chưa cập nhật";
@@ -135,9 +135,12 @@ export async function notifyParticipants(req, res) {
   const { id } = req.params; // id = session_id
 
   try {
-    // 1. Lấy session để biết nó thuộc class nào
+    // 1. Lấy session và thông tin lớp để hiển thị trong thông báo
     const [[sessionRow]] = await pool.query(
-      "SELECT id, class_id FROM sessions WHERE id = ?",
+      `SELECT s.id, s.class_id, s.start_time, c.title AS class_title
+       FROM sessions s
+       JOIN classes c ON c.id = s.class_id
+       WHERE s.id = ?`,
       [id]
     );
     if (!sessionRow) {
@@ -149,10 +152,10 @@ export async function notifyParticipants(req, res) {
     // 2. Lấy danh sách học viên đã đăng ký lớp này
     const [rows] = await pool.query(
       `
-        SELECT u.email, u.name
+        SELECT u.id, u.name
         FROM enrollments e
         JOIN users u ON u.id = e.user_id
-        WHERE e.class_id = ? 
+        WHERE e.class_id = ?
           AND e.status IN ('PAID', 'PENDING_PAYMENT', 'WAITLIST')
       `,
       [sessionRow.class_id]
@@ -166,19 +169,23 @@ export async function notifyParticipants(req, res) {
       });
     }
 
-    // 3. Gửi email (tuỳ hệ thống mail bạn dùng)
-    for (const user of rows) {
-      await sendEmail(
-        user.email,
-        "Nhắc nhở buổi học sắp tới",
-        `Xin chào ${user.name},\n\nBạn có một buổi học sắp diễn ra.\nVui lòng kiểm tra lịch của bạn.`
-      );
-    }
+    // 3. Tạo thông báo cho từng học viên
+    const startTimeLabel = formatDateTime(sessionRow.start_time);
+    const notificationTitle = sessionRow.class_title
+      ? `Lớp ${sessionRow.class_title}`
+      : "Nhắc nhở buổi học";
+    const notificationBody = `Huấn luyện viên vừa gửi nhắc nhở cho buổi học lúc ${startTimeLabel}. Hãy kiểm tra lịch và chuẩn bị tham gia!`;
+
+    await Promise.all(
+      rows.map((user) =>
+        pushNotification(user.id, notificationTitle, notificationBody)
+      )
+    );
 
     return res.json({
       ok: true,
       sent: rows.length,
-      message: `Đã gửi email tới ${rows.length} học viên`,
+      message: `Đã tạo thông báo cho ${rows.length} học viên`,
     });
   } catch (err) {
     console.error("notifyParticipants error:", err);

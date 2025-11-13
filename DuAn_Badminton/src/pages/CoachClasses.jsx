@@ -52,7 +52,7 @@ export default function CoachClasses() {
         alert(res?.message || "Gửi thông báo thất bại");
       }
     } catch (err) {
-      alert(err?.message || "Không gửi được email thông báo");
+      alert(err?.message || "Không gửi được thông báo");
     } finally {
       setSendingSession(null);
     }
@@ -163,7 +163,7 @@ export default function CoachClasses() {
                             >
                               {sendingSession === session.id
                                 ? "Đang gửi…"
-                                : "Gửi email nhắc"}
+                                : "Gửi thông báo"}
                             </button>
                           </td>
                         </tr>
