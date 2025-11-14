@@ -14,7 +14,15 @@ export async function enrollClass(req, res) {
     return res.status(400).json({ ok: false, errors: errors.array() });
 
   const userId = req.user.id;
+  const userRole = req.user.role;
   const { class_id, note = null } = req.body;
+
+  if (userRole === "COACH") {
+    return res.status(403).json({
+      ok: false,
+      message: "Huấn luyện viên không thể đăng ký khóa học.",
+    });
+  }
 
   const conn = await pool.getConnection();
   try {
@@ -42,7 +50,8 @@ export async function enrollClass(req, res) {
          FROM enrollments
         WHERE class_id = ? AND user_id = ?
         ORDER BY created_at DESC
-        LIMIT 1`,
+        LIMIT 1
+        FOR UPDATE`,
       [class_id, userId]
     );
 
@@ -61,6 +70,43 @@ export async function enrollClass(req, res) {
           ok: true,
           message: "Bạn đã đăng ký lớp học này.",
           data: existing,
+        });
+      }
+
+      if (["CANCELLED", "REFUNDED"].includes(existing.status)) {
+        const [[countRow]] = await conn.query(
+          `SELECT COUNT(*) AS cnt
+             FROM enrollments
+            WHERE class_id=? AND status IN ('PENDING_PAYMENT','PAID','WAITLIST')`,
+          [class_id]
+        );
+
+        if (countRow.cnt >= (klass.capacity ?? 0)) {
+          await conn.rollback();
+          return res
+            .status(409)
+            .json({ ok: false, message: "Class is full" });
+        }
+
+        await conn.query(
+          `UPDATE enrollments
+              SET status = 'PENDING_PAYMENT', note = ?
+            WHERE id = ?`,
+          [note, existing.id]
+        );
+
+        const [[reactivated]] = await conn.query(
+          `SELECT id, user_id, class_id, status, note, created_at
+             FROM enrollments
+            WHERE id = ?`,
+          [existing.id]
+        );
+
+        await conn.commit();
+        return res.status(200).json({
+          ok: true,
+          message: "Đăng ký lại thành công, vui lòng thanh toán",
+          data: reactivated,
         });
       }
     }

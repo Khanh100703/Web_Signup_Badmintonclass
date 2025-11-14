@@ -19,6 +19,8 @@ export default function ClassDetail() {
   // 👉 thêm state chọn ngày
   const [selectedDate, setSelectedDate] = useState("");
 
+  const isCoach = user?.role === "COACH";
+
   const capacity = clazz?.capacity ?? null;
   const price = clazz?.price ?? null;
   const level = clazz?.level?.name ?? clazz?.level ?? null;
@@ -114,6 +116,10 @@ export default function ClassDetail() {
 
   async function handleCreateEnrollment() {
     if (submitting) return;
+    if (isCoach) {
+      alert("Huấn luyện viên không thể đăng ký khóa học.");
+      return;
+    }
 
     setSubmitting(true);
     try {
@@ -150,6 +156,14 @@ export default function ClassDetail() {
         label: "Đăng ký",
         disabled: false,
         onClick: handleRequireLogin,
+      };
+    }
+
+    if (isCoach) {
+      return {
+        label: "Huấn luyện viên không thể đăng ký",
+        disabled: true,
+        onClick: null,
       };
     }
 
