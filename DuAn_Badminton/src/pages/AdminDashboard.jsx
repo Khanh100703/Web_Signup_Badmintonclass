@@ -497,9 +497,7 @@ export default function AdminDashboard() {
   const overview = useMemo(() => {
     const activeStudents = new Set(
       enrollments
-        .filter((e) =>
-          ["PAID", "PENDING_PAYMENT", "WAITLIST"].includes(e.status)
-        )
+        .filter((e) => e.status === "PAID")
         .map((e) => e.user_id)
     ).size;
     return [
