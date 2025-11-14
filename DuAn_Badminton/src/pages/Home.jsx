@@ -38,22 +38,34 @@ const heroSlides = [
 
 const schedulePreview = [
   {
+    level: "Thiếu nhi",
+    times: "Cuối tuần | 8:00 - 11:00",
+    location: "Sân Cầu Lông TADA D2",
+    tuition: "800.000đ/tháng",
+  },
+  {
     level: "Cơ bản",
-    times: "Thứ 2 - 4 - 6 | 18:00 - 20:00",
-    location: "Sân VHU Gym",
+    times: "Thứ 2 - 4 - 6 | 16:00 - 18:00",
+    location: "Sân Cầu Lông TADA D2",
     tuition: "1.500.000đ/tháng",
   },
   {
-    level: "Nâng cao",
+    level: "Trung bình",
     times: "Thứ 3 - 5 - 7 | 19:00 - 21:00",
-    location: "Sân Quận 7",
+    location: "Sân cầu lông Kỳ Hòa",
     tuition: "1.900.000đ/tháng",
+  },
+  {
+    level: "Nâng cao",
+    times: "Thứ 2 - 4 - 6 | 18:00 - 20:00",
+    location: "Sân Cầu Lông TADA D2",
+    tuition: "2.200.000đ/tháng",
   },
   {
     level: "Thi đấu",
     times: "Cuối tuần | 8:00 - 11:00",
-    location: "Sân Nhà thi đấu TDTT",
-    tuition: "2.500.000đ/tháng",
+    location: "Sân VHU Gym",
+    tuition: "2.000.000đ/tháng",
   },
 ];
 
@@ -253,36 +265,48 @@ export default function Home() {
               Trung tâm huấn luyện cầu lông năng động hàng đầu
             </h2>
             <p className="mt-4 text-base leading-relaxed text-slate-600">
-              SmashBadminton mang đến môi trường tập luyện chuyên nghiệp với giáo
-              trình cá nhân hóa cho mọi trình độ. Đội ngũ huấn luyện viên giàu
-              kinh nghiệm luôn theo sát học viên để tối ưu hóa kỹ thuật và thể lực.
+              SmashBadminton mang đến môi trường tập luyện chuyên nghiệp với
+              giáo trình cá nhân hóa cho mọi trình độ. Đội ngũ huấn luyện viên
+              giàu kinh nghiệm luôn theo sát học viên để tối ưu hóa kỹ thuật và
+              thể lực.
             </p>
             <ul className="mt-6 space-y-3 text-sm text-slate-600">
               <li className="flex items-start gap-2">
                 <span className="mt-1 h-2 w-2 rounded-full bg-emerald-500" />
-                <span>Cam kết cải thiện kỹ thuật rõ rệt chỉ sau 4 buổi tập.</span>
+                <span>
+                  Cam kết cải thiện kỹ thuật rõ rệt chỉ sau 4 buổi tập.
+                </span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="mt-1 h-2 w-2 rounded-full bg-emerald-500" />
-                <span>Lịch học linh hoạt, đáp ứng nhu cầu học viên bận rộn.</span>
+                <span>
+                  Lịch học linh hoạt, đáp ứng nhu cầu học viên bận rộn.
+                </span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="mt-1 h-2 w-2 rounded-full bg-emerald-500" />
-                <span>Trang thiết bị đạt chuẩn thi đấu và khu vực gym hỗ trợ thể lực.</span>
+                <span>
+                  Trang thiết bị đạt chuẩn thi đấu và khu vực gym hỗ trợ thể
+                  lực.
+                </span>
               </li>
             </ul>
           </div>
           <div className="grid grid-cols-3 gap-4">
-            {[{
-              label: "Khóa học đang mở",
-              value: classes.length,
-            }, {
-              label: "Huấn luyện viên",
-              value: coachCount,
-            }, {
-              label: "Sân tập",
-              value: locationCount,
-            }].map((stat) => (
+            {[
+              {
+                label: "Khóa học đang mở",
+                value: classes.length,
+              },
+              {
+                label: "Huấn luyện viên",
+                value: coachCount,
+              },
+              {
+                label: "Sân tập",
+                value: locationCount,
+              },
+            ].map((stat) => (
               <div
                 key={stat.label}
                 className="rounded-3xl border border-blue-100 bg-gradient-to-br from-white via-blue-50 to-emerald-50 p-6 text-center shadow-sm"
@@ -311,8 +335,9 @@ export default function Home() {
                 Lộ trình linh hoạt, phí ưu đãi
               </h2>
               <p className="mt-3 max-w-2xl text-sm text-blue-100">
-                Chọn khung giờ phù hợp với lịch trình cá nhân. Học viên mới được tư vấn
-                lộ trình chi tiết và trải nghiệm buổi học thử hoàn toàn miễn phí.
+                Chọn khung giờ phù hợp với lịch trình cá nhân. Học viên mới được
+                tư vấn lộ trình chi tiết và trải nghiệm buổi học thử hoàn toàn
+                miễn phí.
               </p>
             </div>
           </div>
@@ -346,8 +371,8 @@ export default function Home() {
             </table>
           </div>
           <p className="mt-4 text-xs text-blue-100/80">
-            * Học phí đã bao gồm sân bãi, dụng cụ cơ bản và nước uống. Giảm thêm 10%
-            cho nhóm đăng ký từ 3 học viên trở lên.
+            * Học phí đã bao gồm sân bãi, dụng cụ cơ bản và nước uống. Giảm thêm
+            10% cho nhóm đăng ký từ 3 học viên trở lên.
           </p>
         </div>
       </section>
@@ -391,10 +416,12 @@ export default function Home() {
               <p className="text-xs uppercase tracking-[0.4em] text-emerald-500">
                 Featured Classes
               </p>
-              <h2 className="text-3xl font-bold text-slate-900">Khóa học nổi bật</h2>
+              <h2 className="text-3xl font-bold text-slate-900">
+                Khóa học nổi bật
+              </h2>
               <p className="mt-2 max-w-2xl text-sm text-slate-600">
-                Từ kỹ thuật cơ bản đến chiến thuật thi đấu nâng cao, chọn ngay lớp học phù hợp
-                để nâng cấp phong độ của bạn.
+                Từ kỹ thuật cơ bản đến chiến thuật thi đấu nâng cao, chọn ngay
+                lớp học phù hợp để nâng cấp phong độ của bạn.
               </p>
             </div>
             <Link
@@ -426,7 +453,9 @@ export default function Home() {
                   )}
                 </div>
                 <div className="flex flex-1 flex-col gap-3 p-6">
-                  <h3 className="text-lg font-semibold text-slate-900">{item.title}</h3>
+                  <h3 className="text-lg font-semibold text-slate-900">
+                    {item.title}
+                  </h3>
                   <p className="text-sm leading-relaxed text-slate-600">
                     {item.description ||
                       "Khóa học cầu lông phù hợp cho mọi trình độ."}
@@ -451,8 +480,9 @@ export default function Home() {
             Sẵn sàng bứt phá cùng SmashBadminton?
           </h2>
           <p className="mt-4 text-sm leading-relaxed text-blue-100">
-            Đăng ký ngay để nhận tư vấn lộ trình miễn phí và tham gia buổi học thử đầu tiên.
-            Chúng tôi luôn đồng hành để bạn chinh phục mọi mục tiêu.
+            Đăng ký ngay để nhận tư vấn lộ trình miễn phí và tham gia buổi học
+            thử đầu tiên. Chúng tôi luôn đồng hành để bạn chinh phục mọi mục
+            tiêu.
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-4">
             <Link

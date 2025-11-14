@@ -14,6 +14,11 @@ function formatCurrency(value) {
   return value ?? "";
 }
 
+const BANK_QR_URL = "/images/payment/MyQR.jpg"; // đổi đúng tên file QR của bạn
+const BANK_NAME = "TP Bank";
+const BANK_OWNER = "DANG XUAN KHANH";
+const BANK_NUMBER = "07338072501";
+
 export default function PaymentPage() {
   const { enrollmentId } = useParams();
   const { user } = useAuth();
@@ -164,6 +169,46 @@ export default function PaymentPage() {
           </Link>
           <span>/ Thanh toán</span>
         </div>
+        {/* QR chuyển khoản ngân hàng */}
+        <div className="mt-8 grid gap-6 md:grid-cols-[1.5fr,1fr] items-center">
+          <div className="rounded-2xl border border-blue-100 bg-blue-50/60 p-4 text-sm text-slate-700">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-500">
+              Thông tin chuyển khoản
+            </p>
+            <p className="mt-2">
+              <span className="font-semibold">Ngân hàng:</span> {BANK_NAME}
+            </p>
+            <p className="mt-1">
+              <span className="font-semibold">Chủ tài khoản:</span> {BANK_OWNER}
+            </p>
+            <p className="mt-1">
+              <span className="font-semibold">Số tài khoản:</span> {BANK_NUMBER}
+            </p>
+            <p className="mt-3 text-xs text-slate-500">
+              * Nội dung chuyển khoản nên ghi:{" "}
+              <span className="font-mono font-semibold text-slate-700">
+                {user?.name || "TenHocVien"} - {enrollment.class_title}
+              </span>{" "}
+              để dễ kiểm tra.
+            </p>
+          </div>
+
+          <div className="flex flex-col items-center gap-3">
+            <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+              <img
+                src={BANK_QR_URL}
+                alt="QR thanh toán ngân hàng"
+                className="h-56 w-56 object-contain"
+              />
+            </div>
+            <p className="text-xs text-slate-500 text-center">
+              Quét mã QR bằng app ngân hàng để thanh toán nhanh. <br />
+              Sau khi chuyển khoản xong, bấm nút{" "}
+              <span className="font-semibold">"Thanh toán thành công"</span> ở
+              bên dưới.
+            </p>
+          </div>
+        </div>
 
         <div className="rounded-3xl border border-blue-100 bg-white p-8 shadow-2xl">
           <h1 className="text-2xl font-semibold text-slate-900">
@@ -227,7 +272,11 @@ export default function PaymentPage() {
                   : "bg-gradient-to-r from-emerald-500 to-blue-600 hover:scale-[1.03]"
               }`}
             >
-              {isPaid ? "Đã thanh toán" : submitting ? "Đang xử lý…" : "Thanh toán thành công"}
+              {isPaid
+                ? "Đã thanh toán"
+                : submitting
+                ? "Đang xử lý…"
+                : "Thanh toán thành công"}
             </button>
             <Link
               to={classLink}
