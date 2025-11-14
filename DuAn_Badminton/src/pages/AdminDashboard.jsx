@@ -495,9 +495,13 @@ export default function AdminDashboard() {
 
   // ===== Overview stats =====
   const overview = useMemo(() => {
-    const activeStudents = enrollments.filter((e) =>
-      ["PAID", "PENDING_PAYMENT"].includes(e.status)
-    ).length;
+    const activeStudents = new Set(
+      enrollments
+        .filter((e) =>
+          ["PAID", "PENDING_PAYMENT", "WAITLIST"].includes(e.status)
+        )
+        .map((e) => e.user_id)
+    ).size;
     return [
       { label: "Khóa học", value: classes.length },
       { label: "Huấn luyện viên", value: coaches.length },
@@ -516,14 +520,6 @@ export default function AdminDashboard() {
             <div className="mt-2 text-2xl font-semibold">{s.value}</div>
           </div>
         ))}
-      </div>
-      <div className="rounded-2xl border p-6 bg-white">
-        <h3 className="text-lg font-semibold mb-2">Gợi ý</h3>
-        <p className="text-sm text-gray-600">
-          Quản lý khoá học, buổi học, HLV, địa điểm và theo dõi đăng ký trong
-          các tab bên trên. Hệ thống đã đồng bộ đăng ký theo <b>class_id</b>{" "}
-          (không theo session).
-        </p>
       </div>
     </div>
   );
@@ -1562,7 +1558,9 @@ export default function AdminDashboard() {
             <p className="text-xs uppercase tracking-[0.4em] text-emerald-500">
               Admin Control
             </p>
-            <h1 className="text-3xl font-bold text-slate-900">Bảng điều khiển Admin</h1>
+            <h1 className="text-3xl font-bold text-slate-900">
+              Bảng điều khiển Admin
+            </h1>
           </div>
         </div>
 
@@ -1586,9 +1584,9 @@ export default function AdminDashboard() {
         {tab === "users" && renderUsers()}
         {tab === "coaches" && renderCoaches()}
         {tab === "classes" && renderClasses()}
-      {tab === "sessions" && renderSessions()}
-      {tab === "locations" && renderLocations()}
-      {tab === "enrollments" && renderEnrollments()}
+        {tab === "sessions" && renderSessions()}
+        {tab === "locations" && renderLocations()}
+        {tab === "enrollments" && renderEnrollments()}
         {tab === "reports" && renderReports()}
       </div>
     </div>

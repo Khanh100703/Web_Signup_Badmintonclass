@@ -1,15 +1,32 @@
 import { Router } from "express";
-import { requireAuth } from "../middlewares/auth.js";
-import { body, query, param } from "express-validator";
+import { requireAuth, requireRole } from "../middlewares/auth.js";
+import { body, param } from "express-validator";
 import {
   enrollClass,
   myEnrollments,
   cancelEnrollmentById,
+  getAllEnrollments,
+  updateEnrollmentStatus,
 } from "../controllers/enrollmentsController.js";
 
 const router = Router();
 
-// Danh sách đơn của tôi (theo lớp)
+// ========== ADMIN ROUTES ==========
+
+// Admin: xem toàn bộ đăng ký (trang Admin -> tab Đăng ký & card Học viên đang tham gia)
+router.get("/", requireAuth, requireRole(["ADMIN"]), getAllEnrollments);
+
+// Admin: đổi trạng thái đăng ký
+router.patch(
+  "/:id/status",
+  requireAuth,
+  requireRole(["ADMIN"]),
+  updateEnrollmentStatus
+);
+
+// ========== USER ROUTES ==========
+
+// Danh sách đơn của TÔI (theo lớp)
 router.get("/my", requireAuth, myEnrollments);
 
 // Đăng ký theo LỚP
@@ -21,7 +38,7 @@ router.post(
   enrollClass
 );
 
-// Huỷ theo ID của enrollment
+// Huỷ theo ID của enrollment (user tự huỷ đơn của mình)
 router.delete(
   "/:id",
   requireAuth,

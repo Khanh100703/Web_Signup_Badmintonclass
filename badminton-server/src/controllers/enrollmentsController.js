@@ -192,3 +192,71 @@ export async function cancelEnrollmentById(req, res) {
     conn.release();
   }
 }
+
+// ====== ADMIN: lấy tất cả đăng ký (dùng cho trang Admin) ======
+export async function getAllEnrollments(req, res) {
+  try {
+    const [rows] = await pool.query(
+      `
+      SELECT 
+        e.id,
+        e.user_id,
+        u.name  AS user_name,
+        e.class_id,
+        c.title AS class_title,
+        e.status,
+        e.note,
+        e.created_at
+      FROM enrollments e
+      JOIN users   u ON u.id = e.user_id
+      JOIN classes c ON c.id = e.class_id
+      ORDER BY e.created_at DESC
+      `
+    );
+
+    return res.json({ ok: true, data: rows });
+  } catch (err) {
+    console.error("getAllEnrollments error:", err);
+    return res.status(500).json({ ok: false, message: "Server error" });
+  }
+}
+
+// ====== ADMIN: đổi trạng thái đăng ký ======
+export async function updateEnrollmentStatus(req, res) {
+  const { id } = req.params;
+  const { status } = req.body;
+
+  const allowed = [
+    "PENDING_PAYMENT",
+    "PAID",
+    "CANCELLED",
+    "REFUNDED",
+    "WAITLIST",
+  ];
+  if (!allowed.includes(status)) {
+    return res
+      .status(400)
+      .json({ ok: false, message: "Trạng thái không hợp lệ" });
+  }
+
+  try {
+    const [result] = await pool.query(
+      "UPDATE enrollments SET status = ? WHERE id = ?",
+      [status, id]
+    );
+
+    if (result.affectedRows === 0) {
+      return res
+        .status(404)
+        .json({ ok: false, message: "Không tìm thấy đăng ký" });
+    }
+
+    return res.json({
+      ok: true,
+      message: "Cập nhật trạng thái thành công",
+    });
+  } catch (err) {
+    console.error("updateEnrollmentStatus error:", err);
+    return res.status(500).json({ ok: false, message: "Server error" });
+  }
+}
