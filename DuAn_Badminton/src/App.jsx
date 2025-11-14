@@ -20,7 +20,7 @@ import CoachClasses from "./pages/CoachClasses.jsx";
 import AdminDashboard from "./pages/AdminDashboard.jsx";
 import ProfilePage from "./pages/ProfilePage.jsx";
 import ChangePasswordPage from "./pages/ChangePasswordPage.jsx";
-import CheckoutPage from "./pages/CheckoutPage.jsx";
+import PaymentPage from "./pages/PaymentPage.jsx";
 
 export default function App() {
   return (
@@ -66,10 +66,10 @@ export default function App() {
                 }
               />
               <Route
-                path="/classes/:id/checkout"
+                path="/payments/:enrollmentId"
                 element={
                   <RequireAuth>
-                    <CheckoutPage />
+                    <PaymentPage />
                   </RequireAuth>
                 }
               />

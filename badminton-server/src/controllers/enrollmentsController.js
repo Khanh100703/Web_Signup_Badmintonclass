@@ -37,22 +37,39 @@ export async function enrollClass(req, res) {
     }
 
     // 2) Đã có đăng ký trước đó chưa? (unique class_id + user_id)
-    const [dup] = await conn.query(
-      `SELECT id, status FROM enrollments WHERE class_id=? AND user_id=?`,
+    const [[existing]] = await conn.query(
+      `SELECT id, user_id, class_id, status, note, created_at
+         FROM enrollments
+        WHERE class_id = ? AND user_id = ?
+        ORDER BY created_at DESC
+        LIMIT 1`,
       [class_id, userId]
     );
-    if (dup.length) {
-      await conn.rollback();
-      return res
-        .status(409)
-        .json({ ok: false, message: "You already enrolled this class" });
+
+    if (existing) {
+      if (existing.status === "PAID") {
+        await conn.rollback();
+        return res.status(409).json({
+          ok: false,
+          message: "Bạn đã thanh toán và tham gia khóa học này rồi.",
+        });
+      }
+
+      if (["PENDING_PAYMENT", "WAITLIST"].includes(existing.status)) {
+        await conn.rollback();
+        return res.status(200).json({
+          ok: true,
+          message: "Bạn đã đăng ký lớp học này.",
+          data: existing,
+        });
+      }
     }
 
-    // 3) Check capacity (đếm PENDING_PAYMENT + PAID)
+    // 3) Check capacity (đếm PENDING_PAYMENT + PAID + WAITLIST)
     const [[countRow]] = await conn.query(
       `SELECT COUNT(*) AS cnt
          FROM enrollments
-        WHERE class_id=? AND status IN ('PENDING_PAYMENT','PAID')`,
+        WHERE class_id=? AND status IN ('PENDING_PAYMENT','PAID','WAITLIST')`,
       [class_id]
     );
     if (countRow.cnt >= (klass.capacity ?? 0)) {
@@ -67,10 +84,19 @@ export async function enrollClass(req, res) {
       [userId, class_id, note]
     );
 
+    const [[newEnrollment]] = await conn.query(
+      `SELECT id, user_id, class_id, status, note, created_at
+         FROM enrollments
+        WHERE id = ?`,
+      [ins.insertId]
+    );
+
     await conn.commit();
-    return res
-      .status(201)
-      .json({ ok: true, id: ins.insertId, status: "PENDING_PAYMENT" });
+    return res.status(201).json({
+      ok: true,
+      message: "Đăng ký thành công, vui lòng thanh toán",
+      data: newEnrollment,
+    });
   } catch (err) {
     await conn.rollback();
     console.error("enrollClass error:", err);
@@ -93,7 +119,7 @@ export async function myEnrollments(req, res) {
           e.status,
           e.note,
           e.created_at,
-          c.id   AS class_id,
+          e.class_id,
           c.title AS class_title,
           c.price,
           c.start_date,
@@ -109,6 +135,84 @@ export async function myEnrollments(req, res) {
   } catch (err) {
     console.error("myEnrollments error:", err);
     return res.status(500).json({ ok: false, message: "Server error" });
+  }
+}
+
+export async function confirmEnrollmentPayment(req, res) {
+  const userId = req.user.id;
+  const enrollmentId = Number(req.params.id);
+
+  if (!enrollmentId) {
+    return res
+      .status(400)
+      .json({ ok: false, message: "Mã đăng ký không hợp lệ" });
+  }
+
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+
+    const [[enrollment]] = await conn.query(
+      `SELECT id, user_id, class_id, status, note, created_at
+         FROM enrollments
+        WHERE id = ? FOR UPDATE`,
+      [enrollmentId]
+    );
+
+    if (!enrollment) {
+      await conn.rollback();
+      return res
+        .status(404)
+        .json({ ok: false, message: "Không tìm thấy đăng ký" });
+    }
+
+    if (enrollment.user_id !== userId) {
+      await conn.rollback();
+      return res.status(403).json({ ok: false, message: "Không được phép" });
+    }
+
+    if (enrollment.status === "PAID") {
+      await conn.rollback();
+      return res.json({
+        ok: true,
+        message: "Bạn đã thanh toán đơn này rồi.",
+        data: enrollment,
+      });
+    }
+
+    if (enrollment.status !== "PENDING_PAYMENT") {
+      await conn.rollback();
+      return res.status(400).json({
+        ok: false,
+        message: "Đơn đăng ký không ở trạng thái chờ thanh toán",
+      });
+    }
+
+    await conn.query(
+      `UPDATE enrollments SET status = 'PAID' WHERE id = ?`,
+      [enrollmentId]
+    );
+
+    const [[updated]] = await conn.query(
+      `SELECT id, user_id, class_id, status, note, created_at
+         FROM enrollments
+        WHERE id = ?`,
+      [enrollmentId]
+    );
+
+    await conn.commit();
+
+    return res.json({
+      ok: true,
+      message: "Thanh toán thành công",
+      data: updated,
+    });
+  } catch (err) {
+    await conn.rollback();
+    console.error("confirmEnrollmentPayment error:", err);
+    return res.status(500).json({ ok: false, message: "Server error" });
+  } finally {
+    conn.release();
   }
 }
 

@@ -7,6 +7,7 @@ import {
   cancelEnrollmentById,
   getAllEnrollments,
   updateEnrollmentStatus,
+  confirmEnrollmentPayment,
 } from "../controllers/enrollmentsController.js";
 
 const router = Router();
@@ -44,6 +45,13 @@ router.delete(
   requireAuth,
   param("id").isInt({ gt: 0 }).withMessage("invalid enrollment id"),
   cancelEnrollmentById
+);
+
+router.post(
+  "/:id/confirm-payment",
+  requireAuth,
+  param("id").isInt({ gt: 0 }).withMessage("invalid enrollment id"),
+  confirmEnrollmentPayment
 );
 
 export default router;
