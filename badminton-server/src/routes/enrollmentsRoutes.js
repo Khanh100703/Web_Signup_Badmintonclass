@@ -8,6 +8,7 @@ import {
   getAllEnrollments,
   updateEnrollmentStatus,
   confirmEnrollmentPayment,
+  myPaymentHistory,
 } from "../controllers/enrollmentsController.js";
 
 const router = Router();
@@ -53,5 +54,6 @@ router.post(
   param("id").isInt({ gt: 0 }).withMessage("invalid enrollment id"),
   confirmEnrollmentPayment
 );
+router.get("/my/payments", requireAuth, myPaymentHistory);
 
 export default router;

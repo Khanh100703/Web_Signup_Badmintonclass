@@ -204,8 +204,9 @@ export default function PaymentPage() {
             <p className="text-xs text-slate-500 text-center">
               Quét mã QR bằng app ngân hàng để thanh toán nhanh. <br />
               Sau khi chuyển khoản xong, bấm nút{" "}
-              <span className="font-semibold">"Thanh toán thành công"</span> ở
-              bên dưới.
+              <span className="font-semibold">"Tôi đã chuyển khoản"</span> ở bên
+              dưới để hệ thống ghi nhận yêu cầu. Quản trị viên sẽ kiểm tra và
+              xác nhận thanh toán cho bạn.
             </p>
           </div>
         </div>
@@ -276,8 +277,9 @@ export default function PaymentPage() {
                 ? "Đã thanh toán"
                 : submitting
                 ? "Đang xử lý…"
-                : "Thanh toán thành công"}
+                : "Tôi đã chuyển khoản"}
             </button>
+
             <Link
               to={classLink}
               className="inline-flex items-center rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-medium text-slate-600 shadow-sm transition hover:border-emerald-300 hover:text-emerald-600"

@@ -65,9 +65,7 @@ export default function ClassDetail() {
               : Array.isArray(resEnroll?.data)
               ? resEnroll.data
               : [];
-            const found = list.find(
-              (e) => Number(e.class_id) === Number(id)
-            );
+            const found = list.find((e) => Number(e.class_id) === Number(id));
             if (!cancelled) {
               setCurrentEnrollment(found ?? null);
             }
@@ -309,7 +307,8 @@ export default function ClassDetail() {
                         {capacity} học viên
                         {seatsLeft !== null && (
                           <span className="text-sm font-normal text-blue-700">
-                            {" "}- còn {Math.max(seatsLeft, 0)}
+                            {" "}
+                            - còn {Math.max(seatsLeft, 0)}
                           </span>
                         )}
                       </p>
@@ -377,23 +376,32 @@ export default function ClassDetail() {
                       >
                         <td className="px-4 py-3 text-slate-600">
                           {session?.start_time
-                            ? new Date(session.start_time).toLocaleString("vi-VN", {
-                                hour12: false,
-                              })
+                            ? new Date(session.start_time).toLocaleString(
+                                "vi-VN",
+                                {
+                                  hour12: false,
+                                }
+                              )
                             : "—"}
                         </td>
                         <td className="px-4 py-3 text-slate-600">
                           {session?.end_time
-                            ? new Date(session.end_time).toLocaleString("vi-VN", {
-                                hour12: false,
-                              })
+                            ? new Date(session.end_time).toLocaleString(
+                                "vi-VN",
+                                {
+                                  hour12: false,
+                                }
+                              )
                             : "—"}
                         </td>
                       </tr>
                     ))}
                     {!visibleSessions.length && (
                       <tr>
-                        <td className="px-4 py-4 text-center text-sm text-slate-400" colSpan={2}>
+                        <td
+                          className="px-4 py-4 text-center text-sm text-slate-400"
+                          colSpan={2}
+                        >
                           {selectedDate
                             ? "Không có buổi học nào trong ngày đã chọn"
                             : "Lịch học đang được cập nhật."}
@@ -408,7 +416,9 @@ export default function ClassDetail() {
 
           <aside className="space-y-6">
             <div className="rounded-3xl border border-emerald-100 bg-gradient-to-br from-emerald-500/10 via-white to-blue-100/40 p-6 shadow-lg">
-              <h3 className="text-lg font-semibold text-slate-800">Huấn luyện viên</h3>
+              <h3 className="text-lg font-semibold text-slate-800">
+                Huấn luyện viên
+              </h3>
               {clazz?.coach ? (
                 <div className="mt-4 flex items-center gap-4">
                   {clazz.coach.photo_url ? (
@@ -428,10 +438,14 @@ export default function ClassDetail() {
                       {clazz.coach.name}
                     </p>
                     {clazz.coach.email && (
-                      <p className="text-sm text-slate-500">{clazz.coach.email}</p>
+                      <p className="text-sm text-slate-500">
+                        {clazz.coach.email}
+                      </p>
                     )}
                     {clazz.coach.phone && (
-                      <p className="text-sm text-slate-500">☎ {clazz.coach.phone}</p>
+                      <p className="text-sm text-slate-500">
+                        ☎ {clazz.coach.phone}
+                      </p>
                     )}
                   </div>
                 </div>
@@ -444,9 +458,13 @@ export default function ClassDetail() {
 
             {clazz?.location && (
               <div className="rounded-3xl border border-blue-100 bg-white/90 p-6 shadow-lg">
-                <h3 className="text-lg font-semibold text-slate-800">Địa điểm tập luyện</h3>
+                <h3 className="text-lg font-semibold text-slate-800">
+                  Địa điểm tập luyện
+                </h3>
                 <p className="mt-3 text-sm text-slate-600">
-                  <span className="font-semibold text-slate-800">{clazz.location.name}</span>
+                  <span className="font-semibold text-slate-800">
+                    {clazz.location.name}
+                  </span>
                   {clazz.location.address ? ` — ${clazz.location.address}` : ""}
                 </p>
               </div>

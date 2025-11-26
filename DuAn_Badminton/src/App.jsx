@@ -21,6 +21,7 @@ import AdminDashboard from "./pages/AdminDashboard.jsx";
 import ProfilePage from "./pages/ProfilePage.jsx";
 import ChangePasswordPage from "./pages/ChangePasswordPage.jsx";
 import PaymentPage from "./pages/PaymentPage.jsx";
+import PaymentHistoryPage from "./pages/PaymentHistoryPage.jsx";
 
 export default function App() {
   return (
@@ -30,67 +31,75 @@ export default function App() {
           <div className="min-h-screen flex flex-col bg-slate-950/5">
             <Navbar />
             <main className="flex-1">
-            <Routes>
-              <Route path="/" element={<Home />} />
-              <Route path="/classes" element={<Classes />} />
-              <Route path="/classes/:id" element={<ClassDetail />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/coaches" element={<Coaches />} />
-              <Route path="/contact" element={<Contact />} />
-              <Route path="/register" element={<Register />} />
-              <Route path="/forgot-password" element={<ForgotPassword />} />
-              <Route path="/reset-password" element={<ResetPassword />} />
-              <Route path="/verify" element={<VerifyRegister />} />
-              <Route
-                path="/me/schedule"
-                element={
-                  <RequireAuth>
-                    <MySchedule />
-                  </RequireAuth>
-                }
-              />
-              <Route
-                path="/profile"
-                element={
-                  <RequireAuth>
-                    <ProfilePage />
-                  </RequireAuth>
-                }
-              />
-              <Route
-                path="/change-password"
-                element={
-                  <RequireAuth>
-                    <ChangePasswordPage />
-                  </RequireAuth>
-                }
-              />
-              <Route
-                path="/payments/:enrollmentId"
-                element={
-                  <RequireAuth>
-                    <PaymentPage />
-                  </RequireAuth>
-                }
-              />
-              <Route
-                path="/coach/classes"
-                element={
-                  <RequireAuth roles={["COACH", "ADMIN"]}>
-                    <CoachClasses />
-                  </RequireAuth>
-                }
-              />
-              <Route
-                path="/admin"
-                element={
-                  <RequireAuth roles={["ADMIN"]}>
-                    <AdminDashboard />
-                  </RequireAuth>
-                }
-              />
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
+              <Routes>
+                <Route path="/" element={<Home />} />
+                <Route path="/classes" element={<Classes />} />
+                <Route path="/classes/:id" element={<ClassDetail />} />
+                <Route path="/login" element={<Login />} />
+                <Route path="/coaches" element={<Coaches />} />
+                <Route path="/contact" element={<Contact />} />
+                <Route path="/register" element={<Register />} />
+                <Route path="/forgot-password" element={<ForgotPassword />} />
+                <Route path="/reset-password" element={<ResetPassword />} />
+                <Route path="/verify" element={<VerifyRegister />} />
+                <Route
+                  path="/me/schedule"
+                  element={
+                    <RequireAuth>
+                      <MySchedule />
+                    </RequireAuth>
+                  }
+                />
+                <Route
+                  path="/profile"
+                  element={
+                    <RequireAuth>
+                      <ProfilePage />
+                    </RequireAuth>
+                  }
+                />
+                <Route
+                  path="/change-password"
+                  element={
+                    <RequireAuth>
+                      <ChangePasswordPage />
+                    </RequireAuth>
+                  }
+                />
+                <Route
+                  path="/payments/:enrollmentId"
+                  element={
+                    <RequireAuth>
+                      <PaymentPage />
+                    </RequireAuth>
+                  }
+                />
+                <Route
+                  path="/coach/classes"
+                  element={
+                    <RequireAuth roles={["COACH", "ADMIN"]}>
+                      <CoachClasses />
+                    </RequireAuth>
+                  }
+                />
+                <Route
+                  path="/admin"
+                  element={
+                    <RequireAuth roles={["ADMIN"]}>
+                      <AdminDashboard />
+                    </RequireAuth>
+                  }
+                />
+                <Route
+                  path="/payment-history"
+                  element={
+                    <RequireAuth>
+                      <PaymentHistoryPage />
+                    </RequireAuth>
+                  }
+                />
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
             </main>
             <Footer />
           </div>

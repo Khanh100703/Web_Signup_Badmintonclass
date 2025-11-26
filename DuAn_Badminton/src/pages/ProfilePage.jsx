@@ -100,17 +100,18 @@ export default function ProfilePage() {
   };
 
   return (
-    <div className="bg-gradient-to-br from-blue-50 via-white to-emerald-50 py-12">
+    <div className="bg-gradient-to-br from-slate-900 via-blue-900 to-emerald-700 py-41 text-white">
       <div className="max-w-4xl mx-auto px-4">
         <div className="mb-8 text-center">
           <p className="text-sm uppercase tracking-[0.4em] text-blue-500">
             Smash Your Limits
           </p>
-          <h1 className="mt-2 text-4xl font-extrabold text-slate-800">
+          <h1 className="mt-2 text-4xl font-extrabold text-white">
             Thông tin cá nhân
           </h1>
-          <p className="mt-3 text-base text-slate-500">
-            Giữ cho hồ sơ của bạn luôn chính xác để trải nghiệm lớp học tốt nhất.
+          <p className="mt-3 text-base text-white">
+            Giữ cho hồ sơ của bạn luôn chính xác để trải nghiệm lớp học tốt
+            nhất.
           </p>
         </div>
 
