@@ -341,28 +341,41 @@ export default function Home() {
               </p>
             </div>
           </div>
-          <div className="mt-8 overflow-x-auto">
-            <table className="w-full min-w-[560px] text-sm">
-              <thead>
-                <tr className="bg-white/10 text-left text-xs uppercase tracking-[0.3em] text-emerald-200">
-                  <th className="px-4 py-3">Trình độ</th>
-                  <th className="px-4 py-3">Khung giờ</th>
-                  <th className="px-4 py-3">Địa điểm</th>
-                  <th className="px-4 py-3">Học phí</th>
+          <div className="overflow-x-auto rounded-xl border border-white/20">
+            <table className="min-w-full border-collapse">
+              <thead className="bg-white/10 text-white">
+                <tr>
+                  <th className="px-3 py-2 sm:px-4 sm:py-3 text-left border-b border-white/20">
+                    Trình độ
+                  </th>
+                  <th className="px-3 py-2 sm:px-4 sm:py-3 text-left border-b border-white/20">
+                    Thời gian
+                  </th>
+                  <th className="px-3 py-2 sm:px-4 sm:py-3 text-left border-b border-white/20">
+                    Địa điểm
+                  </th>
+                  <th className="px-3 py-2 sm:px-4 sm:py-3 text-left border-b border-white/20">
+                    Học phí
+                  </th>
                 </tr>
               </thead>
+
               <tbody>
                 {schedulePreview.map((row) => (
                   <tr
                     key={row.level}
-                    className="border-b border-white/10 last:border-0 hover:bg-white/5"
+                    className="hover:bg-white/5 border-b border-white/10 last:border-0"
                   >
-                    <td className="px-4 py-3 font-semibold text-white">
+                    <td className="px-3 py-2 sm:px-4 sm:py-3 text-white font-semibold">
                       {row.level}
                     </td>
-                    <td className="px-4 py-3 text-blue-100">{row.times}</td>
-                    <td className="px-4 py-3 text-blue-100">{row.location}</td>
-                    <td className="px-4 py-3 font-semibold text-emerald-200">
+                    <td className="px-3 py-2 sm:px-4 sm:py-3 text-blue-100">
+                      {row.times}
+                    </td>
+                    <td className="px-3 py-2 sm:px-4 sm:py-3 text-blue-100">
+                      {row.location}
+                    </td>
+                    <td className="px-3 py-2 sm:px-4 sm:py-3 text-emerald-200 font-semibold">
                       {row.tuition}
                     </td>
                   </tr>
@@ -370,6 +383,7 @@ export default function Home() {
               </tbody>
             </table>
           </div>
+
           <p className="mt-4 text-xs text-blue-100/80">
             * Học phí đã bao gồm sân bãi, dụng cụ cơ bản và nước uống. Giảm thêm
             10% cho nhóm đăng ký từ 3 học viên trở lên.
@@ -424,6 +438,7 @@ export default function Home() {
                 lớp học phù hợp để nâng cấp phong độ của bạn.
               </p>
             </div>
+
             <Link
               to="/classes"
               className="inline-flex items-center justify-center rounded-2xl border border-blue-200 bg-white px-4 py-2 text-sm font-semibold text-blue-600 shadow-sm transition hover:-translate-y-0.5 hover:border-emerald-300"
@@ -431,8 +446,10 @@ export default function Home() {
               Xem tất cả
             </Link>
           </div>
+
+          {/* ⭐ Chỉ hiển thị 3 khóa học */}
           <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {popularClasses.map((item) => (
+            {popularClasses.slice(2, 6).map((item) => (
               <Link
                 key={item.id}
                 to={`/classes/${item.id}`}
@@ -452,14 +469,17 @@ export default function Home() {
                     </div>
                   )}
                 </div>
+
                 <div className="flex flex-1 flex-col gap-3 p-6">
                   <h3 className="text-lg font-semibold text-slate-900">
                     {item.title}
                   </h3>
+
                   <p className="text-sm leading-relaxed text-slate-600">
                     {item.description ||
                       "Khóa học cầu lông phù hợp cho mọi trình độ."}
                   </p>
+
                   <div className="mt-auto text-xs font-semibold uppercase tracking-[0.3em] text-blue-500">
                     {item.location_name || "Địa điểm linh hoạt"}
                   </div>

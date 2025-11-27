@@ -64,7 +64,19 @@ export default function Coaches() {
         const res = await api.get("/api/coaches");
         const payload = Array.isArray(res?.data) ? res.data : res;
         const list = Array.isArray(payload) ? payload : payload?.data || [];
-        setCoaches(list.map(normalizeCoach).filter(Boolean));
+        const sorted = list
+          .map(normalizeCoach)
+          .filter(Boolean)
+          .sort((a, b) => {
+            const aIsTeacher = a.name?.trim().toLowerCase().startsWith("thầy");
+            const bIsTeacher = b.name?.trim().toLowerCase().startsWith("thầy");
+
+            if (aIsTeacher && !bIsTeacher) return -1; // a lên trước
+            if (!aIsTeacher && bIsTeacher) return 1; // b lên trước
+            return 0; // còn lại giữ nguyên
+          });
+
+        setCoaches(sorted);
       } catch {
         setErr("Không tải được danh sách huấn luyện viên");
       } finally {
