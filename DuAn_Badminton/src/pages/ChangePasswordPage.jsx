@@ -102,7 +102,7 @@ export default function ChangePasswordPage() {
   };
 
   return (
-    <div className="bg-gradient-to-br from-slate-900 via-blue-900 to-emerald-700 py-14 text-white">
+    <div className="bg-gradient-to-br from-slate-900 via-blue-900 to-emerald-700 py-45 text-white">
       <div className="max-w-3xl mx-auto px-4">
         <div className="rounded-3xl bg-white/10 p-8 shadow-2xl ring-1 ring-white/20 backdrop-blur">
           <div className="text-center">
@@ -113,7 +113,8 @@ export default function ChangePasswordPage() {
               Đổi mật khẩu với OTP
             </h1>
             <p className="mt-2 text-sm text-blue-100">
-              Nhập mật khẩu hiện tại để nhận OTP và thiết lập lại mật khẩu thật mạnh mẽ.
+              Nhập mật khẩu hiện tại để nhận OTP và thiết lập lại mật khẩu thật
+              mạnh mẽ.
             </p>
           </div>
 
@@ -157,7 +158,11 @@ export default function ChangePasswordPage() {
                   disabled={loadingOtp || !form.currentPassword}
                   className="rounded-2xl bg-gradient-to-r from-emerald-400 to-blue-500 px-4 py-2 text-sm font-semibold text-white shadow-lg transition hover:scale-[1.03] disabled:opacity-60"
                 >
-                  {loadingOtp ? "Đang gửi..." : otpSent ? "Gửi lại OTP" : "Gửi OTP"}
+                  {loadingOtp
+                    ? "Đang gửi..."
+                    : otpSent
+                    ? "Gửi lại OTP"
+                    : "Gửi OTP"}
                 </button>
               </div>
               {stepMessage && (

@@ -38,8 +38,8 @@ export default function Footer() {
             hoạt.
           </p>
           <div className="mt-4 text-sm text-gray-700 space-y-1">
-            <div>📞 Hotline: 09xx xxx xxx</div>
-            <div>✉️ Email: contact@yourexample.com</div>
+            <div>📞 Hotline: 0352109405</div>
+            <div>✉️ Email: khanhcr479@gmail.com</div>
             <div>🕒 08:00 – 22:00 (hàng ngày)</div>
           </div>
 
@@ -88,12 +88,14 @@ export default function Footer() {
               className="w-8 h-8 rounded-full object-cover"
               onError={(e) => (e.currentTarget.style.display = "none")}
             />
-            <span className="font-semibold text-gray-800">HocCauLong.com</span>
+            <span className="font-semibold text-gray-800">
+              SmashBadminton.com
+            </span>
           </div>
 
           {/* Copyright */}
           <div className="text-xs text-gray-500 text-center sm:text-left">
-            © {new Date().getFullYear()} HocCauLong — All rights reserved.
+            © {new Date().getFullYear()} SmashBadminton — All rights reserved.
           </div>
 
           {/* Social icons (emoji style) */}

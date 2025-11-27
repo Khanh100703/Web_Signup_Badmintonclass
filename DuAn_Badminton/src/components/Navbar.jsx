@@ -62,7 +62,9 @@ export default function Navbar() {
   const unreadIds = useMemo(
     () =>
       notifications
-        .filter((item) => !item.is_read && !String(item.id).startsWith("local-"))
+        .filter(
+          (item) => !item.is_read && !String(item.id).startsWith("local-")
+        )
         .map((item) => item.id),
     [notifications]
   );
@@ -176,16 +178,6 @@ export default function Navbar() {
                 Lớp của tôi
               </NavLink>
             )}
-            {user?.role === "ADMIN" && (
-              <NavLink
-                to="/admin"
-                className={({ isActive }) =>
-                  `${baseLinkClass} ${isActive ? "text-white" : ""}`
-                }
-              >
-                Quản trị
-              </NavLink>
-            )}
           </nav>
 
           <div className="flex items-center gap-3 text-white">
@@ -266,7 +258,11 @@ export default function Navbar() {
                       fill="none"
                       stroke="currentColor"
                     >
-                      <path d="M6 8l4 4 4-4" strokeWidth={1.6} strokeLinecap="round" />
+                      <path
+                        d="M6 8l4 4 4-4"
+                        strokeWidth={1.6}
+                        strokeLinecap="round"
+                      />
                     </svg>
                   </button>
                   {menuOpen && (
@@ -283,6 +279,19 @@ export default function Navbar() {
                           🏸
                         </span>
                         Thông tin cá nhân
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigate("/payment-history");
+                          setMenuOpen(false);
+                        }}
+                        className="mt-1 flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-slate-600 hover:bg-blue-50 hover:text-blue-700"
+                      >
+                        <span role="img" aria-label="payment-history">
+                          💳
+                        </span>
+                        Lịch sử thanh toán
                       </button>
                       <button
                         type="button"

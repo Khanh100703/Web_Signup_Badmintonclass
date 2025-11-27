@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
 import { api } from "../services/api.js";
 import { useAuth } from "../hooks/useAuth.js";
@@ -13,10 +13,13 @@ export default function ClassDetail() {
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
-  const [enrolledThisClass, setEnrolledThisClass] = useState(false);
+  const [currentEnrollment, setCurrentEnrollment] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
 
   // 👉 thêm state chọn ngày
   const [selectedDate, setSelectedDate] = useState("");
+
+  const isCoach = user?.role === "COACH";
 
   const capacity = clazz?.capacity ?? null;
   const price = clazz?.price ?? null;
@@ -31,52 +34,168 @@ export default function ClassDetail() {
       : price;
 
   useEffect(() => {
-    let mounted = true;
-    (async () => {
+    let cancelled = false;
+
+    async function loadDetail() {
+      setLoading(true);
+      setErr("");
+
       try {
         const res1 = await api.get(`/api/classes/${id}`);
-        const c = res1?.data ?? null;
-        if (!c) throw new Error("Không tìm thấy lớp học");
-        if (!mounted) return;
+        const classPayload =
+          res1?.data?.data && typeof res1.data.data === "object"
+            ? res1.data.data
+            : res1?.data ?? null;
+        if (!classPayload) {
+          throw new Error("Không tìm thấy lớp học");
+        }
 
-        setClazz(c);
-        setSessions(Array.isArray(c.sessions) ? c.sessions : []);
+        if (!cancelled) {
+          setClazz(classPayload);
+          setSessions(
+            Array.isArray(classPayload.sessions) ? classPayload.sessions : []
+          );
+        }
 
-        // Đã đăng ký lớp này chưa?
         if (user) {
           try {
-            const r = await api.get(`/api/enrollments/my`);
-            const arr = Array.isArray(r?.data) ? r.data : [];
-            const enrolled = arr.some(
-              (e) =>
-                Number(e.class_id) === Number(id) &&
-                ["PENDING_PAYMENT", "PAID", "WAITLIST"].includes(e.status)
-            );
-            if (mounted) setEnrolledThisClass(enrolled);
-          } catch {
-            if (mounted) setEnrolledThisClass(false);
+            const resEnroll = await api.get(`/api/enrollments/my`);
+            const list = Array.isArray(resEnroll?.data?.data)
+              ? resEnroll.data.data
+              : Array.isArray(resEnroll?.data)
+              ? resEnroll.data
+              : [];
+            const found = list.find((e) => Number(e.class_id) === Number(id));
+            if (!cancelled) {
+              setCurrentEnrollment(found ?? null);
+            }
+          } catch (error) {
+            console.error(error);
+            if (!cancelled) setCurrentEnrollment(null);
           }
-        } else {
-          setEnrolledThisClass(false);
+        } else if (!cancelled) {
+          setCurrentEnrollment(null);
         }
       } catch (e) {
-        if (mounted) setErr(e?.message || "Không tải được chi tiết lớp");
+        if (!cancelled) {
+          setErr(e?.message || "Không tải được chi tiết lớp");
+        }
       } finally {
-        if (mounted) setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
-    })();
+    }
+
+    loadDetail();
+
     return () => {
-      mounted = false;
+      cancelled = true;
     };
   }, [id, user]);
 
-  function handleCheckout() {
-    if (!user) {
-      navigate("/login", { state: { from: location.pathname } });
+  const seatsLeft = useMemo(() => {
+    if (clazz && typeof clazz.remaining_estimate === "number") {
+      return clazz.remaining_estimate;
+    }
+    if (clazz && typeof clazz.seats_remaining === "number") {
+      return clazz.seats_remaining;
+    }
+    return null;
+  }, [clazz]);
+
+  const handleRequireLogin = () => {
+    navigate("/login", { state: { from: location.pathname } });
+  };
+
+  const goToPayment = (enrollmentId) => {
+    navigate(`/payments/${enrollmentId}`);
+  };
+
+  async function handleCreateEnrollment() {
+    if (submitting) return;
+    if (isCoach) {
+      alert("Huấn luyện viên không thể đăng ký khóa học.");
       return;
     }
-    navigate(`/classes/${id}/checkout`);
+
+    setSubmitting(true);
+    try {
+      const res = await api.post(`/api/enrollments`, {
+        class_id: Number(id),
+      });
+
+      if (!res?.ok) {
+        throw new Error(res?.message || "Đăng ký thất bại");
+      }
+
+      const enrollmentData =
+        res?.data && typeof res.data === "object"
+          ? res.data
+          : res?.data?.data ?? null;
+
+      if (!enrollmentData?.id) {
+        throw new Error("Không nhận được thông tin đăng ký");
+      }
+
+      setCurrentEnrollment(enrollmentData);
+      alert(res?.message || "Đăng ký thành công, vui lòng thanh toán");
+      goToPayment(enrollmentData.id);
+    } catch (error) {
+      alert(error?.message || "Không thể đăng ký lớp học");
+    } finally {
+      setSubmitting(false);
+    }
   }
+
+  const actionConfig = (() => {
+    if (!user) {
+      return {
+        label: "Đăng ký",
+        disabled: false,
+        onClick: handleRequireLogin,
+      };
+    }
+
+    if (isCoach) {
+      return {
+        label: "Huấn luyện viên không thể đăng ký",
+        disabled: true,
+        onClick: null,
+      };
+    }
+
+    if (currentEnrollment?.status === "PAID") {
+      return { label: "Đã tham gia", disabled: true, onClick: null };
+    }
+
+    if (currentEnrollment?.status === "PENDING_PAYMENT") {
+      return {
+        label: "Tiếp tục thanh toán",
+        disabled: false,
+        onClick: () => goToPayment(currentEnrollment.id),
+      };
+    }
+
+    if (currentEnrollment?.status === "WAITLIST") {
+      return {
+        label: "Đang chờ xếp lớp",
+        disabled: true,
+        onClick: null,
+      };
+    }
+
+    if (seatsLeft !== null && seatsLeft <= 0) {
+      return { label: "Đã hết chỗ", disabled: true, onClick: null };
+    }
+
+    const label = currentEnrollment ? "Đăng ký lại" : "Đăng ký";
+    return {
+      label: submitting ? "Đang xử lý..." : label,
+      disabled: submitting,
+      onClick: handleCreateEnrollment,
+    };
+  })();
 
   if (loading)
     return <div className="max-w-6xl mx-auto px-4 py-10">Đang tải…</div>;
@@ -90,17 +209,6 @@ export default function ClassDetail() {
         Không tìm thấy khóa học
       </div>
     );
-
-  const seatsLeft =
-    typeof clazz.seats_remaining === "number" ? clazz.seats_remaining : null;
-  const canEnroll = !enrolledThisClass && (seatsLeft === null || seatsLeft > 0);
-  const primaryButtonLabel = !user
-    ? "Đăng nhập để tham gia"
-    : enrolledThisClass
-    ? "Bạn đã đăng ký"
-    : seatsLeft !== null && seatsLeft <= 0
-    ? "Đã hết chỗ"
-    : "Thanh toán & tham gia";
 
   // 👉 lọc buổi theo ngày
   const visibleSessions = !selectedDate
@@ -165,16 +273,22 @@ export default function ClassDetail() {
                     )}
                   </div>
                   <button
-                    onClick={handleCheckout}
-                    disabled={!canEnroll}
+                    onClick={actionConfig.onClick || (() => {})}
+                    disabled={actionConfig.disabled || !actionConfig.onClick}
                     className={`rounded-2xl px-6 py-3 text-sm font-semibold text-white shadow-lg transition ${
-                      canEnroll
+                      !actionConfig.disabled && actionConfig.onClick
                         ? "bg-gradient-to-r from-emerald-500 to-blue-600 hover:scale-[1.03]"
                         : "bg-slate-400 cursor-not-allowed"
                     }`}
-                    title={!user ? "Hãy đăng nhập để thanh toán" : ""}
+                    title={
+                      !user
+                        ? "Hãy đăng nhập để thanh toán"
+                        : actionConfig.disabled
+                        ? actionConfig.label
+                        : ""
+                    }
                   >
-                    {primaryButtonLabel}
+                    {actionConfig.label}
                   </button>
                 </div>
 
@@ -193,7 +307,8 @@ export default function ClassDetail() {
                         {capacity} học viên
                         {seatsLeft !== null && (
                           <span className="text-sm font-normal text-blue-700">
-                            {" "}- còn {Math.max(seatsLeft, 0)}
+                            {" "}
+                            - còn {Math.max(seatsLeft, 0)}
                           </span>
                         )}
                       </p>
@@ -261,23 +376,32 @@ export default function ClassDetail() {
                       >
                         <td className="px-4 py-3 text-slate-600">
                           {session?.start_time
-                            ? new Date(session.start_time).toLocaleString("vi-VN", {
-                                hour12: false,
-                              })
+                            ? new Date(session.start_time).toLocaleString(
+                                "vi-VN",
+                                {
+                                  hour12: false,
+                                }
+                              )
                             : "—"}
                         </td>
                         <td className="px-4 py-3 text-slate-600">
                           {session?.end_time
-                            ? new Date(session.end_time).toLocaleString("vi-VN", {
-                                hour12: false,
-                              })
+                            ? new Date(session.end_time).toLocaleString(
+                                "vi-VN",
+                                {
+                                  hour12: false,
+                                }
+                              )
                             : "—"}
                         </td>
                       </tr>
                     ))}
                     {!visibleSessions.length && (
                       <tr>
-                        <td className="px-4 py-4 text-center text-sm text-slate-400" colSpan={2}>
+                        <td
+                          className="px-4 py-4 text-center text-sm text-slate-400"
+                          colSpan={2}
+                        >
                           {selectedDate
                             ? "Không có buổi học nào trong ngày đã chọn"
                             : "Lịch học đang được cập nhật."}
@@ -292,7 +416,9 @@ export default function ClassDetail() {
 
           <aside className="space-y-6">
             <div className="rounded-3xl border border-emerald-100 bg-gradient-to-br from-emerald-500/10 via-white to-blue-100/40 p-6 shadow-lg">
-              <h3 className="text-lg font-semibold text-slate-800">Huấn luyện viên</h3>
+              <h3 className="text-lg font-semibold text-slate-800">
+                Huấn luyện viên
+              </h3>
               {clazz?.coach ? (
                 <div className="mt-4 flex items-center gap-4">
                   {clazz.coach.photo_url ? (
@@ -312,10 +438,14 @@ export default function ClassDetail() {
                       {clazz.coach.name}
                     </p>
                     {clazz.coach.email && (
-                      <p className="text-sm text-slate-500">{clazz.coach.email}</p>
+                      <p className="text-sm text-slate-500">
+                        {clazz.coach.email}
+                      </p>
                     )}
                     {clazz.coach.phone && (
-                      <p className="text-sm text-slate-500">☎ {clazz.coach.phone}</p>
+                      <p className="text-sm text-slate-500">
+                        ☎ {clazz.coach.phone}
+                      </p>
                     )}
                   </div>
                 </div>
@@ -328,9 +458,13 @@ export default function ClassDetail() {
 
             {clazz?.location && (
               <div className="rounded-3xl border border-blue-100 bg-white/90 p-6 shadow-lg">
-                <h3 className="text-lg font-semibold text-slate-800">Địa điểm tập luyện</h3>
+                <h3 className="text-lg font-semibold text-slate-800">
+                  Địa điểm tập luyện
+                </h3>
                 <p className="mt-3 text-sm text-slate-600">
-                  <span className="font-semibold text-slate-800">{clazz.location.name}</span>
+                  <span className="font-semibold text-slate-800">
+                    {clazz.location.name}
+                  </span>
                   {clazz.location.address ? ` — ${clazz.location.address}` : ""}
                 </p>
               </div>
