@@ -178,16 +178,6 @@ export default function Navbar() {
                 Lớp của tôi
               </NavLink>
             )}
-            {user?.role === "ADMIN" && (
-              <NavLink
-                to="/admin"
-                className={({ isActive }) =>
-                  `${baseLinkClass} ${isActive ? "text-white" : ""}`
-                }
-              >
-                Quản trị
-              </NavLink>
-            )}
           </nav>
 
           <div className="flex items-center gap-3 text-white">
